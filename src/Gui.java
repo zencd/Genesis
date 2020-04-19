@@ -41,9 +41,9 @@ public class Gui extends JFrame implements Consts {
 
     JSlider perlinSlider = new JSlider (JSlider.HORIZONTAL, 0, 480, 300);
     private final JButton mapButton = new JButton("Create Map");
-    private final JSlider sealevelSlider = new JSlider (JSlider.HORIZONTAL, 0, 256, 145);
+    private final JSlider sealevelSlider = new JSlider (JSlider.HORIZONTAL, 0, 256, SEA_LEVEL_DEFAULT);
     private final JButton startButton = new JButton("Start/Stop");
-    private final JSlider drawstepSlider = new JSlider (JSlider.HORIZONTAL, 0, 40, 10);
+    private final JSlider drawstepSlider = new JSlider (JSlider.HORIZONTAL, 0, 40, DRAW_STEP_DEFAULT);
 
     private final GuiCallback guiCallback;
 
@@ -138,8 +138,9 @@ public class Gui extends JFrame implements Consts {
         }
 
         this.pack();
+        this.setSize(1600, 700);
         this.setVisible(true);
-        setExtendedState(MAXIMIZED_BOTH);
+        //setExtendedState(MAXIMIZED_BOTH);
 
         drawstepSlider.addChangeListener(e -> {
             int ds = drawstepSlider.getValue();
@@ -147,7 +148,7 @@ public class Gui extends JFrame implements Consts {
             guiCallback.drawStepChanged(ds);
         });
 
-        mapButton.addActionListener(e -> guiCallback.mapGenerationStarted(canvas.getWidth(), canvas.getHeight()));
+        mapButton.addActionListener(e -> guiCallback.mapGenerationStarted());
 
         sealevelSlider.addChangeListener(event -> guiCallback.seaLevelChanged(sealevelSlider.getValue()));
 

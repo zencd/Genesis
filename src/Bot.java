@@ -1,7 +1,7 @@
 public class Bot {
 
-    private static final int LV_ORGANIC_HOLD = 1;           // органика
-    private static final int LV_ALIVE = 3;                  // живой бот
+    public static final int LV_ORGANIC_HOLD = 1;           // органика
+    public static final int LV_ALIVE = 3;                  // живой бот
     private static final int MIND_SIZE = 64;                // объем памяти генома
 
     private static double[] randMemory = new double[1000000];   // массив предгенерированных случайных чисел
@@ -32,15 +32,22 @@ public class Bot {
     Bot prev;                // предыдущий в цепочке просчета
     Bot next;                // следующий в цепочке просчета
 
+    World world;
+
+    public Bot(World world) {
+        this.world = world;
+    }
 
     // ====================================================================
     // =========== главная функция жизнедеятельности бота  ================
     // =========== в ней выполняется код его мозга-генома  ================
     void step() {
         int breakflag;
-        int command;
+        //final int command;
         for (int cyc = 0; cyc < 15; cyc++) {
-            command = mind[adr];        // текущая команда
+            final int command = mind[adr];        // текущая команда
+            int _alive = this.alive;
+            //System.out.println("bot: " + this +", command: " + command);
             breakflag = 0;
             switch (command) {
 
@@ -286,10 +293,9 @@ public class Bot {
     //==== out - номер направление или       ============
     //====  или 8 , если свободных нет       ============
     private int findEmptyDirection() {
-        int xt, yt;
         for (int i = 0; i < 8; i++) {
-            xt = xFromVektorR(i);
-            yt = yFromVektorR(i);
+            final int xt = xFromVektorR(i);
+            final int yt = yFromVektorR(i);
             if ((yt >= 0) && (yt < World.simulation.height)) {
                 if (World.simulation.matrix[xt][yt] == null) return i;
             }
@@ -322,6 +328,7 @@ public class Bot {
     //=====  превращение бота в органику    ===========
     private void bot2Organic() {
         alive = LV_ORGANIC_HOLD;       // отметим в массиве bots[], что бот органика
+        // todo remove the bot from cluster
     }
 
 
@@ -433,11 +440,11 @@ public class Bot {
     //============================    скушать другого бота или органику  ==========================================
     private int botEatBot() { // на входе ссылка на бота, направлелие и флажок(относительное или абсолютное направление)
         // на выходе пусто - 2  стена - 3  органик - 4  бот - 5
-        int direction = botGetParam() % 8;
+        final int direction = botGetParam() % 8;
 
         health = health - 4;                // бот теряет на этом 4 энергии в независимости от результата
-        int xt;
-        int yt;
+        final int xt;
+        final int yt;
 
         xt = xFromVektorR(direction);       // вычисляем координату клетки, с которой хочет скушать бот (относительное направление)
         yt = yFromVektorR(direction);
@@ -445,25 +452,26 @@ public class Bot {
         if ((yt < 0) || (yt >= World.simulation.height)) {  // если там стена возвращаем 3
             return 3;
         }
-        if (World.simulation.matrix[xt][yt] == null) {  // если клетка пустая возвращаем 2
+        Bot another = World.simulation.matrix[xt][yt];
+        if (another == null) {  // если клетка пустая возвращаем 2
             return 2;
         }
         // осталось 2 варианта: ограника или бот
-        else if (World.simulation.matrix[xt][yt].alive == LV_ORGANIC_HOLD) {   // если там оказалась органика
-            deleteBot(World.simulation.matrix[xt][yt]);                        // то удаляем её из списков
+        else if (another.alive == LV_ORGANIC_HOLD) {   // если там оказалась органика
+            deleteBot(another);                        // то удаляем её из списков
             health = health + 100;          //здоровье увеличилось на 100
             goRed(100);               // бот покраснел
             return 4;                       // возвращаем 4
         }
         //--------- дошли до сюда, значит впереди живой бот -------------------
         int min0 = mineral;                 // определим количество минералов у бота
-        int min1 = World.simulation.matrix[xt][yt].mineral;  // определим количество минералов у потенциального обеда
-        int hl = World.simulation.matrix[xt][yt].health;  // определим энергию у потенциального обеда
+        int min1 = another.mineral;  // определим количество минералов у потенциального обеда
+        int hl = another.health;  // определим энергию у потенциального обеда
         // если у бота минералов больше
         if (min0 >= min1) {
             mineral = min0 - min1;          // количество минералов у бота уменьшается на количество минералов у жертвы
             // типа, стесал свои зубы о панцирь жертвы
-            deleteBot(World.simulation.matrix[xt][yt]);          // удаляем жертву из списков
+            deleteBot(another);          // удаляем жертву из списков
             int cl = 100 + (hl / 2);        // количество энергии у бота прибавляется на 100+(половина от энергии жертвы)
             health = health + cl;
             goRed(cl);                      // бот краснеет
@@ -472,11 +480,11 @@ public class Bot {
         //если у жертвы минералов больше ----------------------
         mineral = 0;                        // то бот израсходовал все свои минералы на преодоление защиты
         min1 = min1 - min0;                 // у жертвы количество минералов тоже уменьшилось
-        World.simulation.matrix[xt][yt].mineral = min1;       // перезаписали минералы жертве =========================ЗАПЛАТКА!!!!!!!!!!!!
+        another.mineral = min1;       // перезаписали минералы жертве =========================ЗАПЛАТКА!!!!!!!!!!!!
         //------ если здоровья в 2 раза больше, чем минералов у жертвы  ------
         //------ то здоровьем проламываем минералы ---------------------------
         if (health >= 2 * min1) {
-            deleteBot(World.simulation.matrix[xt][yt]);         // удаляем жертву из списков
+            deleteBot(another);         // удаляем жертву из списков
             int cl = 100 + (hl / 2) - 2 * min1; // вычисляем, сколько энергии смог получить бот
             health = health + cl;
             if (cl < 0)
@@ -485,7 +493,7 @@ public class Bot {
             return 5;                       // возвращаем 5
         }
         //--- если здоровья меньше, чем (минералов у жертвы)*2, то бот погибает от жертвы
-        World.simulation.matrix[xt][yt].mineral = min1 - (health / 2);  // у жертвы минералы истраченны
+        another.mineral = min1 - (health / 2);  // у жертвы минералы истраченны
         health = 0;                         // здоровье уходит в ноль
         return 5;                           // возвращаем 5
     }
@@ -628,17 +636,17 @@ public class Bot {
         health = health - 150;          // бот затрачивает 150 единиц энергии на создание копии
         if (health <= 0) return;        // если у него было меньше 150, то пора помирать
 
-        int n = findEmptyDirection();   // проверим, окружен ли бот
+        final int n = findEmptyDirection();   // проверим, окружен ли бот
         if (n == 8) {                   // если бот окружен, то он в муках погибает
             health = 0;
 //            bot.health += 500;
             return;
         }
 
-        Bot newbot = new Bot();
+        Bot newbot = new Bot(world);
 
-        int xt = xFromVektorR(n);       // координаты X и Y
-        int yt = yFromVektorR(n);
+        final int xt = xFromVektorR(n);       // координаты X и Y
+        final int yt = yFromVektorR(n);
 
         System.arraycopy(mind, 0, newbot.mind, 0, MIND_SIZE);
 
@@ -673,6 +681,7 @@ public class Bot {
         prev = newbot;
 
         World.simulation.matrix[xt][yt] = newbot;    // отмечаем нового бота в массиве matrix
+        world.clusters.get(0).add(newbot);
     }
 
     private int getNewColor(int parentColor) {
@@ -908,5 +917,8 @@ public class Bot {
         return randMemory[randIdx];
     }
 
+    public final boolean isAlive() {
+        return alive == LV_ALIVE;
+    }
 
 }

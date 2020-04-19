@@ -1,12 +1,8 @@
-import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-
 import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.util.ArrayList;
+import java.util.List;
 //import java.util.concurrent.locks.Lock;
 //import java.util.concurrent.locks.ReentrantLock;
 
@@ -23,7 +19,8 @@ public class World implements GuiCallback,Consts {
     private int[] mapInGPU;    //Карта для GPU
     private Image mapbuffer = null;
     Bot[][] matrix;    //Матрица мира
-    private Bot zerobot = new Bot();
+    private Bot zerobot = new Bot(this);
+    @Deprecated
     private Bot currentbot;
     int generation;
     private int population;
@@ -33,15 +30,18 @@ public class World implements GuiCallback,Consts {
     private Image buffer = null;
 
     private Thread thread = null;
+    private List<Thread> threads = null;
     private boolean started = true; // поток работает?
 
     private final Gui gui;
 
+    public List<BotCluster> clusters;
+
     public World() {
-        simulation = this;
+        //simulation = this;
         zoom = 1;
-        sealevel = 145;
-        drawstep = 10;
+        sealevel = SEA_LEVEL_DEFAULT;
+        drawstep = DRAW_STEP_DEFAULT;
         gui = new Gui(this);
         gui.init();
     }
@@ -52,13 +52,23 @@ public class World implements GuiCallback,Consts {
     }
 
     @Override
-    public void mapGenerationStarted(int canvasWidth, int canvasHeight) {
-        width = canvasWidth / zoom;    // Ширина доступной части экрана для рисования карты
-        height = canvasHeight / zoom;
-        generateMap((int) (Math.random() * 10000));
+    public void mapGenerationStarted() {
+        width = gui.canvas.getWidth() / zoom;    // Ширина доступной части экрана для рисования карты
+        height = gui.canvas.getHeight() / zoom;
+        generateMap();
+        createCluster();
         generateAdam();
         paintMapView();
         paint1();
+    }
+
+    void createCluster() {
+        List<BotCluster> clusters = new ArrayList<>();
+        clusters.add(new BotCluster(this, new Rectangle(0, 0, 400, 300)));
+        clusters.add(new BotCluster(this, new Rectangle(400, 0, 400, 300)));
+        clusters.add(new BotCluster(this, new Rectangle(0, 400, 400, 300)));
+        clusters.add(new BotCluster(this, new Rectangle(400, 400, 400, 300)));
+        this.clusters = clusters;
     }
 
     @Override
@@ -72,14 +82,19 @@ public class World implements GuiCallback,Consts {
 
     @Override
     public boolean startedOrStopped() {
-        if(thread==null) {
-            thread	= new Worker(); // создаем новый поток
-            thread.start();
+        if (threads == null) {
+            threads = new ArrayList<>(clusters.size());
+            for (BotCluster cluster : clusters) {
+                thread = new WorkerMT(cluster);
+                thread.start();
+            }
+            //thread	= new Worker(); // создаем новый поток
+            //thread.start();
             return true;
         } else {
             started = false;        //Выставляем влаг
-            Utils.joinSafe(thread);
-            thread = null;
+            Utils.joinSafe(threads);
+            threads = null;
             return false;
         }
     }
@@ -216,11 +231,39 @@ public class World implements GuiCallback,Consts {
         }
     }
 
+    class WorkerMT extends Thread {
+        BotCluster cluster;
+        WorkerMT(BotCluster cluster) {
+            this.cluster = cluster;
+        }
+        public void run() {
+            started	= true;
+            while (started) {
+                Rectangle rect = cluster.rect;
+                for (int i = 0; i < rect.width; i++) {
+                    for (int j = 0; j < rect.height; j++) {
+                        Bot bot = cluster.matrix[i][j];
+                        if (bot != null && bot.isAlive()) {
+                            bot.step();
+                        }
+                    }
+                }
+                generation++;
+                if (generation % drawstep == 0) {
+                    paint1();
+                }
+            }
+            started = false;        // Закончили работу
+        }
+    }
+
+    @Deprecated // use instance
     public static World simulation;
 
     public static void main(String[] args) {
-        simulation = new World();
-//        simulation.generateMap();
+        World world = new World();
+        //world.generateMap();
+        simulation = world;
 //        simulation.generateAdam();
 //        simulation.run();
     }
@@ -234,6 +277,10 @@ public class World implements GuiCallback,Consts {
         } catch (InterruptedException e) {
         }
     }*/
+
+    public void generateMap() {
+        generateMap((int) (Math.random() * 10000));
+    }
 
     // генерируем карту
     public void generateMap(int seed) {
@@ -260,13 +307,15 @@ public class World implements GuiCallback,Consts {
     // генерируем первого бота
     public void generateAdam() {
 
-        Bot bot = new Bot();
+        Bot bot = new Bot(this);
         zerobot.prev = bot;
         zerobot.next = bot;
 
         bot.adr = 0;            // начальный адрес генома
-        bot.x = width / 2;      // координаты бота
-        bot.y = height / 2;
+        //bot.x = width / 2;      // координаты бота
+        //bot.y = height / 2;
+        bot.x = 200; // todo hardcode
+        bot.y = 200;
         bot.health = 990;       // энергия
         bot.mineral = 0;        // минералы
         bot.alive = 3;          // бот живой
@@ -281,6 +330,7 @@ public class World implements GuiCallback,Consts {
             bot.mind[i] = 32;
         }
 
+        clusters.get(0).add(bot);
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу
         currentbot = bot;                       // устанавливаем текущим
     }
