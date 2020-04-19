@@ -64,10 +64,10 @@ public class World implements GuiCallback,Consts {
 
     void createCluster() {
         List<BotCluster> clusters = new ArrayList<>();
-        clusters.add(new BotCluster(this, new Rectangle(0, 0, 400, 300)));
-        clusters.add(new BotCluster(this, new Rectangle(400, 0, 400, 300)));
-        clusters.add(new BotCluster(this, new Rectangle(0, 400, 400, 300)));
-        clusters.add(new BotCluster(this, new Rectangle(400, 400, 400, 300)));
+        int W1 = width / 2;
+        int W2 = width - W1;
+        clusters.add(new BotCluster(this, new Rectangle(0, 0, W1, height)));
+        clusters.add(new BotCluster(this, new Rectangle(W1, 0, W2, height)));
         this.clusters = clusters;
     }
 
@@ -87,6 +87,8 @@ public class World implements GuiCallback,Consts {
             for (BotCluster cluster : clusters) {
                 thread = new WorkerMT(cluster);
                 thread.start();
+                threads.add(thread);
+                System.out.println("started " + thread);
             }
             //thread	= new Worker(); // создаем новый поток
             //thread.start();
@@ -238,10 +240,13 @@ public class World implements GuiCallback,Consts {
         }
         public void run() {
             started	= true;
+            Rectangle rect = cluster.rect;
+            final int right = rect.x + rect.width;
+            final int bottom = rect.y + rect.height;
+            System.out.println("rect: " + rect);
             while (started) {
-                Rectangle rect = cluster.rect;
-                for (int i = 0; i < rect.width; i++) {
-                    for (int j = 0; j < rect.height; j++) {
+                for (int i = rect.x; i < right; i++) {
+                    for (int j = rect.y; j < bottom; j++) {
                         Bot bot = cluster.matrix[i][j];
                         if (bot != null && bot.isAlive()) {
                             bot.step();
@@ -257,13 +262,13 @@ public class World implements GuiCallback,Consts {
         }
     }
 
-    @Deprecated // use instance
-    public static World simulation;
+    //@Deprecated // use instance
+    //public static World simulation;
 
     public static void main(String[] args) {
         World world = new World();
         //world.generateMap();
-        simulation = world;
+        //simulation = world;
 //        simulation.generateAdam();
 //        simulation.run();
     }
