@@ -31,6 +31,9 @@ public class Gui extends JFrame implements Consts {
         VIEW_MODE_MAP.put("Family", VIEW_MODE_FAMILY);
     }
 
+    public static final String BUTTON_START = "Start";
+    public static final String BUTTON_STOP = "Stop";
+
 
     private final JRadioButton baseButton = new JRadioButton("Base", true);
     private final JRadioButton combinedButton = new JRadioButton("Combined", false);
@@ -42,7 +45,7 @@ public class Gui extends JFrame implements Consts {
     JSlider perlinSlider = new JSlider (JSlider.HORIZONTAL, 0, 480, 300);
     private final JButton mapButton = new JButton("Create Map");
     private final JSlider sealevelSlider = new JSlider (JSlider.HORIZONTAL, 0, 256, SEA_LEVEL_DEFAULT);
-    private final JButton startButton = new JButton("Start/Stop");
+    private final JButton startButton = new JButton(BUTTON_START);
     private final JSlider drawstepSlider = new JSlider (JSlider.HORIZONTAL, 0, 40, DRAW_STEP_DEFAULT);
 
     private final GuiCallback guiCallback;
@@ -138,9 +141,9 @@ public class Gui extends JFrame implements Consts {
         }
 
         this.pack();
-        this.setSize(1600, 700);
+        //this.setSize(1600, 700);
+        setExtendedState(MAXIMIZED_BOTH);
         this.setVisible(true);
-        //setExtendedState(MAXIMIZED_BOTH);
 
         drawstepSlider.addChangeListener(e -> {
             int ds = drawstepSlider.getValue();
@@ -156,6 +159,7 @@ public class Gui extends JFrame implements Consts {
             boolean started = guiCallback.startedOrStopped();
             perlinSlider.setEnabled(!started);
             mapButton.setEnabled(!started);
+            startButton.setText(started ? BUTTON_STOP : BUTTON_START);
         });
 
         ActionListener radioListener = e -> {

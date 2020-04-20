@@ -37,6 +37,10 @@ public class World implements GuiCallback,Consts {
 
     public List<BotCluster> clusters;
 
+    private boolean mapPrepared = false;
+
+    static final Font ALERT_FONT = new Font(Font.SANS_SERIF, 0, 24);
+
     public World() {
         //simulation = this;
         zoom = 1;
@@ -56,18 +60,36 @@ public class World implements GuiCallback,Consts {
         width = gui.canvas.getWidth() / zoom;    // Ширина доступной части экрана для рисования карты
         height = gui.canvas.getHeight() / zoom;
         generateMap();
-        createCluster();
+        createClusters();
         generateAdam();
         paintMapView();
         paint1();
+        mapPrepared = true;
     }
 
-    void createCluster() {
+    void createClusters() {
+        final int cores = Runtime.getRuntime().availableProcessors();
+        int perSide = (int)Math.floor(Math.sqrt(cores));
+        //perSide = 1;
+        System.out.println("cores: " + cores);
+        System.out.println("threads: " + perSide + "x" + perSide);
+
         List<BotCluster> clusters = new ArrayList<>();
-        int W1 = width / 2;
-        int W2 = width - W1;
-        clusters.add(new BotCluster(this, new Rectangle(0, 0, W1, height)));
-        clusters.add(new BotCluster(this, new Rectangle(W1, 0, W2, height)));
+
+        final int pieceBaseWidth = width / perSide;
+        final int pieceBaseHeight = height / perSide;
+        for (int i = 0; i < perSide; i++) {
+            for (int j = 0; j < perSide; j++) {
+                final int x = pieceBaseWidth * i;
+                final int y = pieceBaseHeight * j;
+                final int piecePreciseWidth = (i == perSide - 1) ? (width - x) : pieceBaseWidth;
+                final int piecePreciseHeight = (j == perSide - 1) ? (height - y) : pieceBaseHeight;
+                Rectangle rect = new Rectangle(x, y, piecePreciseWidth, piecePreciseHeight);
+                System.out.println("thread rect: " + rect);
+                clusters.add(new BotCluster(this, rect));
+            }
+        }
+
         this.clusters = clusters;
     }
 
@@ -83,12 +105,18 @@ public class World implements GuiCallback,Consts {
     @Override
     public boolean startedOrStopped() {
         if (threads == null) {
+            started = true;
             threads = new ArrayList<>(clusters.size());
+            PaintThread paintThread = new PaintThread();
+            threads.add(paintThread);
+            paintThread.start();
+            boolean doIncrement = true;
             for (BotCluster cluster : clusters) {
-                thread = new WorkerMT(cluster);
+                thread = new WorkerMT(cluster, doIncrement);
                 thread.start();
                 threads.add(thread);
-                System.out.println("started " + thread);
+                doIncrement = false;
+                //System.out.println("started " + thread);
             }
             //thread	= new Worker(); // создаем новый поток
             //thread.start();
@@ -153,7 +181,7 @@ public class World implements GuiCallback,Consts {
         organic = 0;
         int mapred, mapgreen, mapblue;
 
-        while (currentbot != zerobot) {
+        while (currentbot != null && currentbot != zerobot) {
             if (currentbot.alive == 3) {                      // живой бот
                 if (viewMode == VIEW_MODE_BASE) {
                     rgb[currentbot.y * width + currentbot.x] = (255 << 24) | (currentbot.c_red << 16) | (currentbot.c_green << 8) | currentbot.c_blue;
@@ -198,7 +226,16 @@ public class World implements GuiCallback,Consts {
             }
             currentbot = currentbot.next;
         }
-        currentbot = currentbot.next;
+        if (currentbot != null) {
+            currentbot = currentbot.next;
+        }
+
+        if (population <= 0) {
+            started = false;
+            g.setFont(ALERT_FONT);
+            g.setColor(Color.WHITE);
+            g.drawString("None survived", width/2, height/2);
+        }
 
         g.drawImage(image, 0, 0, null);
 
@@ -233,17 +270,31 @@ public class World implements GuiCallback,Consts {
         }
     }
 
+    class PaintThread extends Thread {
+        public void run() {
+            try {
+                final long pause = 1000 / 60;
+                while (started) {
+                    paint1();
+                    Thread.sleep(pause);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     class WorkerMT extends Thread {
         BotCluster cluster;
-        WorkerMT(BotCluster cluster) {
+        boolean doIncrement;
+        WorkerMT(BotCluster cluster, boolean doIncrement) {
             this.cluster = cluster;
+            this.doIncrement = doIncrement;
         }
         public void run() {
-            started	= true;
             Rectangle rect = cluster.rect;
             final int right = rect.x + rect.width;
             final int bottom = rect.y + rect.height;
-            System.out.println("rect: " + rect);
             while (started) {
                 for (int i = rect.x; i < right; i++) {
                     for (int j = rect.y; j < bottom; j++) {
@@ -253,12 +304,10 @@ public class World implements GuiCallback,Consts {
                         }
                     }
                 }
-                generation++;
-                if (generation % drawstep == 0) {
-                    paint1();
+                if (doIncrement) {
+                    generation++;
                 }
             }
-            started = false;        // Закончили работу
         }
     }
 
@@ -317,10 +366,10 @@ public class World implements GuiCallback,Consts {
         zerobot.next = bot;
 
         bot.adr = 0;            // начальный адрес генома
-        //bot.x = width / 2;      // координаты бота
-        //bot.y = height / 2;
-        bot.x = 200; // todo hardcode
-        bot.y = 200;
+        bot.x = width / 2;      // координаты бота
+        bot.y = height / 2;
+        //bot.x = 200;
+        //bot.y = 200;
         bot.health = 990;       // энергия
         bot.mineral = 0;        // минералы
         bot.alive = 3;          // бот живой
