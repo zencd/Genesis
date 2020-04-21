@@ -1,17 +1,17 @@
 /**
  * Main class.
- * Координирует движка симуляции и GUI.
+ * Координирует движок симуляции и GUI.
  */
-public class Main implements GuiCallback, Consts {
+public class Main implements GuiManager.Callback, Consts {
 
-    private final Gui gui;
+    private final GuiManager gui;
     private final World world;
     private Thread paintThread;
     private boolean paintThreadActive = false;
 
     public Main() {
         world = new World();
-        gui = new Gui(world, this);
+        gui = new GuiManager(world, this);
         gui.init();
     }
 
@@ -44,14 +44,14 @@ public class Main implements GuiCallback, Consts {
     @Override
     public boolean startedOrStopped() {
         final World w = world;
-        if (w.thread == null) {
-            w.start(gui);
-            startPaintThread();
-            return true;
-        } else {
+        if (w.isStarted()) {
             w.stop();
             stopPaintThread();
             return false;
+        } else {
+            w.start(gui);
+            startPaintThread();
+            return true;
         }
     }
 

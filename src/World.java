@@ -17,18 +17,22 @@ public class World implements Consts {
     int organic;
     int perlinValue = PERLIN_DEFAULT;
 
-    Thread thread = null;
-    boolean started = true; // поток работает?
+    private Thread thread = null;
+    private boolean started = false; // поток работает?
 
     public World() {
         zoom = 1;
         sealevel = SEA_LEVEL_DEFAULT;
     }
 
-    class Worker extends Thread {
-        Gui gui;
-        long lastTimePainted = 0;
-        Worker(Gui gui) {
+    public boolean isStarted() {
+        return started;
+    }
+
+    private class Worker extends Thread {
+        private final GuiManager gui;
+        private long lastTimePainted = 0;
+        Worker(GuiManager gui) {
             this.gui = gui;
         }
         public void run() {
@@ -52,7 +56,7 @@ public class World implements Consts {
         }
     }
 
-    void start(Gui gui) {
+    void start(GuiManager gui) {
         thread = new Worker(gui); // создаем новый поток
         started	= true;         // Флаг работы потока, если false  поток заканчивает работу
         thread.start();

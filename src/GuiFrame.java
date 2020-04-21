@@ -1,6 +1,4 @@
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
@@ -50,10 +48,10 @@ public class GuiFrame extends JFrame implements Consts {
     private final JButton startButton = new JButton("Start/Stop");
     private final JSlider drawstepSlider = new JSlider (JSlider.HORIZONTAL, 0, 40, 10);
 
-    private final GuiCallback guiCallback;
+    private final GuiManager.Callback callback;
 
-    public GuiFrame(GuiCallback guiCallback) {
-        this.guiCallback = guiCallback;
+    public GuiFrame(GuiManager.Callback callback) {
+        this.callback = callback;
     }
 
     public void init() {
@@ -149,17 +147,17 @@ public class GuiFrame extends JFrame implements Consts {
         drawstepSlider.addChangeListener(e -> {
             int ds = drawstepSlider.getValue();
             if (ds == 0) ds = 1;
-            guiCallback.drawStepChanged(ds);
+            callback.drawStepChanged(ds);
         });
 
-        mapButton.addActionListener(e -> guiCallback.mapGenerationStarted(canvas.getWidth(), canvas.getHeight()));
+        mapButton.addActionListener(e -> callback.mapGenerationStarted(canvas.getWidth(), canvas.getHeight()));
 
-        sealevelSlider.addChangeListener(event -> guiCallback.seaLevelChanged(sealevelSlider.getValue()));
+        sealevelSlider.addChangeListener(event -> callback.seaLevelChanged(sealevelSlider.getValue()));
 
-        perlinSlider.addChangeListener(e -> guiCallback.perlinChanged(perlinSlider.getValue()));
+        perlinSlider.addChangeListener(e -> callback.perlinChanged(perlinSlider.getValue()));
 
         startButton.addActionListener(e -> {
-            boolean started = guiCallback.startedOrStopped();
+            boolean started = callback.startedOrStopped();
             perlinSlider.setEnabled(!started);
             mapButton.setEnabled(!started);
         });
@@ -168,7 +166,7 @@ public class GuiFrame extends JFrame implements Consts {
             String action = e.getActionCommand();
             Integer mode = VIEW_MODE_MAP.get(action);
             if (mode != null) {
-                guiCallback.viewModeChanged(mode);
+                callback.viewModeChanged(mode);
             }
         };
 

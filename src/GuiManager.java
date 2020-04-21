@@ -3,16 +3,25 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 
 /**
- * Главный класс отвечающий за все аспекты визуаизации через GUI.
+ * Отвечает за все аспекты визуализации через GUI.
  */
-public class Gui implements Consts {
+public class GuiManager implements Consts {
     public final GuiFrame frame;
     private final World world;
     int viewMode = VIEW_MODE_BASE;
     int drawstep = 10;
-    Image mapbuffer = null;
+    private Image mapbuffer = null;
 
-    public Gui(World world, GuiCallback callback) {
+    public interface Callback {
+        void drawStepChanged(int value);
+        void mapGenerationStarted(int canvasWidth, int canvasHeight);
+        void seaLevelChanged(int value);
+        boolean startedOrStopped();
+        void viewModeChanged(int viewMode);
+        void perlinChanged(int value);
+    }
+
+    public GuiManager(World world, Callback callback) {
         this.world = world;
         this.frame = new GuiFrame(callback);
     }
@@ -22,14 +31,14 @@ public class Gui implements Consts {
     }
 
     public void paintMapView() {
-        World w = this.world;
+        final World w = this.world;
         final int sealevel = w.sealevel;
 
         int mapred;
         int mapgreen;
         int mapblue;
         mapbuffer = frame.canvas.createImage(w.width * w.zoom, w.height * w.zoom); // ширина - высота картинки
-        Graphics g = mapbuffer.getGraphics();
+        final Graphics g = mapbuffer.getGraphics();
 
         final BufferedImage image = new BufferedImage(w.width, w.height, BufferedImage.TYPE_INT_RGB);
         final int[] rgb = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
@@ -56,10 +65,10 @@ public class Gui implements Consts {
     }
 
     public void paint1() {
-        World w = this.world;
+        final World w = this.world;
 
-        Image buf = frame.canvas.createImage(w.width * w.zoom, w.height * w.zoom); //Создаем временный буфер для рисования
-        Graphics g = buf.getGraphics(); //подеменяем графику на временный буфер
+        final Image buf = frame.canvas.createImage(w.width * w.zoom, w.height * w.zoom); //Создаем временный буфер для рисования
+        final Graphics g = buf.getGraphics(); //подеменяем графику на временный буфер
         g.drawImage(mapbuffer, 0, 0, null);
 
         final BufferedImage image = new BufferedImage(w.width, w.height, BufferedImage.TYPE_INT_ARGB);
