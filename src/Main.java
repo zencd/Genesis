@@ -1,3 +1,5 @@
+import java.util.Random;
+
 /**
  * Main class.
  * Координирует движок симуляции и GUI.
@@ -10,7 +12,8 @@ public class Main implements GuiManager.Callback, Consts {
     private boolean paintThreadActive = false;
 
     public Main() {
-        world = new World();
+        double[] randArray = Utils.makePreCalcRandom();
+        world = new World(randArray, ()->new Random().nextLong());
         gui = new GuiManager(world, this);
         gui.init();
     }
@@ -21,14 +24,11 @@ public class Main implements GuiManager.Callback, Consts {
     }
 
     @Override
-    public void mapGenerationStarted(int canvasWidth, int canvasHeight) {
+    public void mapGenerationInitiated(int canvasWidth, int canvasHeight) {
         final World w = world;
-        w.width = canvasWidth / w.zoom;    // Ширина доступной части экрана для рисования карты
-        w.height = canvasHeight / w.zoom;
-        w.generateMap((int) (Math.random() * 10000));
-        w.generateAdam();
-        gui.paintMapView();
-        gui.paint1();
+        w.mapGenerationInitiated(canvasWidth, canvasHeight);
+        gui.paintMap();
+        gui.paintWorld();
     }
 
     @Override
@@ -36,8 +36,8 @@ public class Main implements GuiManager.Callback, Consts {
         final World w = world;
         w.sealevel = value;
         if (w.map != null) {
-            gui.paintMapView();
-            gui.paint1();
+            gui.paintMap();
+            gui.paintWorld();
         }
     }
 
@@ -62,7 +62,7 @@ public class Main implements GuiManager.Callback, Consts {
                     Thread.sleep(5);
                 }
                 while (paintThreadActive) {
-                    gui.paint1();
+                    gui.paintWorld();
                     Thread.sleep(15);
                 }
             } catch (InterruptedException e) {

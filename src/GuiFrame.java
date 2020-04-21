@@ -86,7 +86,7 @@ public class GuiFrame extends JFrame implements Consts {
         statusPanel.add(organicLabel);
 
         JToolBar toolbar = new JToolBar();
-        toolbar.setOrientation(1);
+        toolbar.setOrientation(SwingConstants.VERTICAL);
 //        toolbar.setBorderPainted(true);
 //        toolbar.setBorder(BorderFactory.createLoweredBevelBorder());
         container.add(toolbar, BorderLayout.WEST);
@@ -150,7 +150,7 @@ public class GuiFrame extends JFrame implements Consts {
             callback.drawStepChanged(ds);
         });
 
-        mapButton.addActionListener(e -> callback.mapGenerationStarted(canvas.getWidth(), canvas.getHeight()));
+        mapButton.addActionListener(e -> callback.mapGenerationInitiated(canvas.getWidth(), canvas.getHeight()));
 
         sealevelSlider.addChangeListener(event -> callback.seaLevelChanged(sealevelSlider.getValue()));
 

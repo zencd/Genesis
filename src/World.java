@@ -1,3 +1,5 @@
+import java.util.function.Supplier;
+
 /**
  * Движок симуляции.
  */
@@ -5,8 +7,8 @@ public class World implements Consts {
 
     int width;
     int height;
-    int zoom;
-    int sealevel;
+    int zoom = 1;
+    int sealevel = SEA_LEVEL_DEFAULT;
     int[][] map;    //Карта мира
     int[] mapInGPU;    //Карта для GPU
     Bot[][] matrix;    //Матрица мира
@@ -20,13 +22,24 @@ public class World implements Consts {
     private Thread thread = null;
     private boolean started = false; // поток работает?
 
-    public World() {
-        zoom = 1;
-        sealevel = SEA_LEVEL_DEFAULT;
+    private final Supplier<Long> mapSeeder; // возвращает seed только для построения карты
+    private final double[] randMemory; // массив предгенерированных случайных чисел
+    private int randIdx = 0;
+
+    public World(double[] randMemory, Supplier<Long> mapSeeder) {
+        this.randMemory = randMemory;
+        this.mapSeeder = mapSeeder;
     }
 
     public boolean isStarted() {
         return started;
+    }
+
+    public void mapGenerationInitiated(int canvasWidth, int canvasHeight) {
+        width = canvasWidth / zoom;    // Ширина доступной части экрана для рисования карты
+        height = canvasHeight / zoom;
+        generateMap(mapSeeder.get());
+        generateAdam();
     }
 
     private class Worker extends Thread {
@@ -47,7 +60,7 @@ public class World implements Consts {
                 //long time2 = System.currentTimeMillis();
 //                System.out.println("Step execute " + ": " + (time2-time1) + "");
                 if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
-                    gui.paint1();                           // отображаем текущее состояние симуляции на экран
+                    gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
                     lastTimePainted = now;
                 }
                 //long time3 = System.currentTimeMillis();
@@ -79,25 +92,24 @@ public class World implements Consts {
     }*/
 
     // генерируем карту
-    public void generateMap(int seed) {
-        generation = 0;
-        this.map = new int[width][height];
-        this.matrix = new Bot[width][height];
+    public void generateMap(long seed) {
+        generation = 0; // todo responsibility
+        int[][] map = new int[width][height];
+        this.matrix = new Bot[width][height]; // todo responsibility
+        final int[] mapInGPU = new int[width * height];
 
         final float f = (float) perlinValue;
-        Perlin2D perlin = new Perlin2D(seed);
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                float value = perlin.getNoise(x/f,y/f,8,0.45f);        // вычисляем точку ландшафта
-                map[x][y] = (int)(value * 255 + 128) & 255;
+        final Perlin2D perlin = new Perlin2D(seed);
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                final float value = perlin.getNoise(x/f,y/f,8,0.45f);        // вычисляем точку ландшафта
+                final int intValue = (int) (value * 255 + 128) & 255;
+                map[x][y] = intValue;
+                mapInGPU[y * width + x] = map[x][y];
             }
         }
-        mapInGPU = new int[width * height];
-        for (int i=0; i<width; i++) {
-            for(int j=0; j<height; j++) {
-                mapInGPU[j*width+i] = map[i][j];
-            }
-        }
+        this.mapInGPU = mapInGPU;
+        this.map = map;
     }
 
     // генерируем первого бота
@@ -127,4 +139,13 @@ public class World implements Consts {
         currentbot = bot;                       // устанавливаем текущим
     }
 
+    public double rand() {
+        // todo maybe not MT ready
+        int i = this.randIdx + 1;
+        if (i >= randMemory.length) {
+            i = 0;
+        }
+        this.randIdx = i;
+        return randMemory[i];
+    }
 }

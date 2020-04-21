@@ -925,12 +925,6 @@ public class Bot {
 
 
     private double rand() {
-        randIdx++;
-        if (randIdx >= randMemory.length) {
-            randIdx = 0;
-        }
-        return randMemory[randIdx];
+        return world.rand();
     }
-
-
 }
