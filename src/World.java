@@ -1,3 +1,8 @@
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
@@ -12,7 +17,9 @@ public class World implements Consts {
     int[][] map;    //Карта мира
     int[] mapInGPU;    //Карта для GPU
     Bot[][] matrix;    //Матрица мира
+    @Deprecated
     Bot zerobot = new Bot(this);
+    @Deprecated
     Bot currentbot;
     int generation;
     int population;
@@ -26,6 +33,8 @@ public class World implements Consts {
     private final double[] randMemory; // массив предгенерированных случайных чисел
     private int randIdx = 0;
 
+    private List<Cluster> clusters;
+
     public World(double[] randMemory, Supplier<Long> mapSeeder) {
         this.randMemory = randMemory;
         this.mapSeeder = mapSeeder;
@@ -38,8 +47,65 @@ public class World implements Consts {
     public void mapGenerationInitiated(int canvasWidth, int canvasHeight) {
         width = canvasWidth / zoom;    // Ширина доступной части экрана для рисования карты
         height = canvasHeight / zoom;
+        clusters = new ArrayList<>();
+        clusters.add(new Cluster());
         generateMap(mapSeeder.get());
         generateAdam();
+    }
+
+    public final void moveTo(Bot bot, int newX, int newY) {
+        final Cluster prevCluster = findCluster(bot);
+        final int prevX = bot.x;
+        final int prevY = bot.y;
+        matrix[newX][newY] = bot;
+        matrix[prevX][prevY] = null;
+        bot.x = newX;
+        bot.y = newY;
+        final Cluster newCluster = findCluster(bot);
+        if (prevCluster != newCluster) {
+            prevCluster.remove(bot);
+            newCluster.add(bot);
+        }
+    }
+
+    public void addToWorld(Bot newBot, @Deprecated Bot before) {
+        // add to matrix
+        matrix[newBot.x][newBot.y] = newBot;
+
+        // add to cluster
+        findCluster(newBot).add(newBot);
+
+        // вставляем нового бота между ботом-предком и предыдущим ботом
+        // в цепочке ссылок, которая объединяет всех ботов
+        if (before != null) {
+            newBot.insertBefore(before);
+        }
+    }
+
+    private final Cluster findCluster(Bot bot) {
+        return clusters.get(0); // todo a single cluster yet
+    }
+
+    final void iterate1() {
+        while (currentbot != zerobot) {
+            if (currentbot.alive == 3) currentbot.step();
+            currentbot = currentbot.next;
+        }
+        currentbot = currentbot.next;
+        generation++;
+    }
+
+    final void iterate2() {
+        for (Cluster cluster : clusters) {
+            //Collections.newSetFromMap(new ConcurrentHashMap<>())
+            HashSet<Bot> bots2 = new HashSet<>(cluster.bots); // todo heavy load
+            for (Bot bot : bots2) {
+                if (bot.alive == 3) {
+                    bot.step();
+                }
+            }
+        }
+        generation++;
     }
 
     private class Worker extends Thread {
@@ -51,20 +117,14 @@ public class World implements Consts {
         public void run() {
             while (started) {       // обновляем матрицу
                 long now = System.currentTimeMillis();
-                while (currentbot != zerobot) {
-                    if (currentbot.alive == 3) currentbot.step();
-                    currentbot = currentbot.next;
-                }
-                currentbot = currentbot.next;
-                generation++;
+                iterate1();
+                //iterate2();
                 //long time2 = System.currentTimeMillis();
 //                System.out.println("Step execute " + ": " + (time2-time1) + "");
                 if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
                     gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
                     lastTimePainted = now;
                 }
-                //long time3 = System.currentTimeMillis();
-//                System.out.println("Paint: " + (time3-time2));
             }
         }
     }
@@ -137,6 +197,7 @@ public class World implements Consts {
 
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу
         currentbot = bot;                       // устанавливаем текущим
+        addToWorld(bot, null);
     }
 
     public double rand() {

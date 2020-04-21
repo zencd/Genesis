@@ -29,13 +29,21 @@ public class Bot {
     int c_blue;
     int c_family;            // цвет семьи бота в ARGB
 
+    @Deprecated
     Bot prev;                // предыдущий в цепочке просчета
+    @Deprecated
     Bot next;                // следующий в цепочке просчета
 
     final World world;
+    Cluster cluster;
 
     Bot(World world) {
         this.world = world;
+    }
+
+    Bot(World world, Cluster cluster) {
+        this.world = world;
+        this.cluster = cluster;
     }
 
 
@@ -357,13 +365,14 @@ public class Bot {
     //===== перемещает бота в нужную точку  ==============
     //===== без проверок                    ==============
     //===== in - номер бота и новые координаты ===========
-    private void moveBot(int xt, int yt) {
-        final World w = world;
-        w.matrix[xt][yt] = this;
-        w.matrix[x][y] = null;
-        x = xt;
-        y = yt;
-    }
+    //@Deprecated // see World.moveTo()
+    //private void moveTo(int xt, int yt) {
+    //    final World w = world;
+    //    w.matrix[xt][yt] = this;
+    //    w.matrix[x][y] = null;
+    //    x = xt;
+    //    y = yt;
+    //}
 
     //жжжжжжжжжжжжжжжжжжжхжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж
     //=====   удаление бота        =============
@@ -431,7 +440,7 @@ public class Bot {
             return 3;                       // то возвращаем 3
         }
         if (w.matrix[xt][yt] == null) {  // если клетка была пустая,
-            moveBot(xt, yt);    // то перемещаем бота
+            w.moveTo(this, xt, yt);    // то перемещаем бота
             return 2;                       // и функция возвращает 2
         }
         // осталось 2 варианта: ограника или бот
@@ -656,7 +665,7 @@ public class Bot {
             return;
         }
 
-        Bot newbot = new Bot(world);
+        Bot newbot = new Bot(w);
 
         int xt = xFromVektorR(n);       // координаты X и Y
         int yt = yFromVektorR(n);
@@ -669,6 +678,7 @@ public class Bot {
 
         newbot.health = health / 2;     // забирается половина здоровья у предка
         health = health / 2;
+
         newbot.mineral = mineral / 2;   // забирается половина минералов у предка
         mineral = mineral / 2;
 
@@ -679,7 +689,7 @@ public class Bot {
         newbot.c_blue = c_blue;         // цвет такой же, как у предка
         newbot.c_family = c_family;     // цвет семьи такой же, как у предка
 
-        if (rand() < 0.25) {     // в одном случае из четырех случайным образом меняем один случайный байт в геноме
+        if (chance(0.25)) {     // в одном случае из четырех случайным образом меняем один случайный байт в геноме
             int ma = (int) (rand() * MIND_SIZE);  // 0..63
             int mc = (int) (rand() * MIND_SIZE);  // 0..63
             newbot.mind[ma] = (byte) mc;
@@ -688,12 +698,21 @@ public class Bot {
 
         newbot.direction = (int) (rand() * 8);  // направление, куда повернут новорожденный, генерируется случайно
 
-        newbot.prev = prev;                     // вставляем нового бота между ботом-предком и предыдущим ботом
-        prev.next = newbot;                     // в цепочке ссылок, которая объединяет всех ботов
-        newbot.next = this;
-        prev = newbot;
+        //newbot.prev = prev;                     // вставляем нового бота между ботом-предком и предыдущим ботом
+        //prev.next = newbot;                     // в цепочке ссылок, которая объединяет всех ботов
+        //newbot.next = this;
+        //prev = newbot;
 
-        w.matrix[xt][yt] = newbot;    // отмечаем нового бота в массиве matrix
+        //w.matrix[xt][yt] = newbot;    // отмечаем нового бота в массиве matrix
+
+        w.addToWorld(newbot, this);
+    }
+
+    public final void insertBefore(Bot before) {
+        this.prev = before.prev;
+        before.prev.next = this;
+        this.next = before;
+        before.prev = this;
     }
 
     private int getNewColor(int parentColor) {
@@ -923,6 +942,9 @@ public class Bot {
         if (c_blue < 0) c_blue = 0;
     }
 
+    private boolean chance(double chance) {
+        return rand() < chance;
+    }
 
     private double rand() {
         return world.rand();
