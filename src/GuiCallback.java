@@ -4,4 +4,5 @@ public interface GuiCallback {
     void seaLevelChanged(int value);
     boolean startedOrStopped();
     void viewModeChanged(int viewMode);
+    void perlinChanged(int value);
 }

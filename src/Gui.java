@@ -1,172 +1,128 @@
-import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionListener;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 
-public class Gui extends JFrame implements Consts {
+/**
+ * Главный класс отвечающий за все аспекты визуаизации через GUI.
+ */
+public class Gui implements Consts {
+    public final GuiFrame frame;
+    private final World world;
+    int viewMode = VIEW_MODE_BASE;
+    int drawstep = 10;
+    Image mapbuffer = null;
 
-    Image buffer = null;
-
-    JPanel canvas = new JPanel() {
-        public void paint(Graphics g) {
-            g.drawImage(buffer, 0, 0, null);
-        }
-    };
-
-    JPanel paintPanel = new JPanel(new FlowLayout());
-    JLabel generationLabel = new JLabel(" Generation: 0 ");
-    JLabel populationLabel = new JLabel(" Population: 0 ");
-    JLabel organicLabel = new JLabel(" Organic: 0 ");
-
-    public static final Map<String,Integer> VIEW_MODE_MAP = new HashMap<>();
-    static {
-        VIEW_MODE_MAP.put("Base", VIEW_MODE_BASE);
-        VIEW_MODE_MAP.put("Combined", VIEW_MODE_COMBINED);
-        VIEW_MODE_MAP.put("Energy", VIEW_MODE_ENERGY);
-        VIEW_MODE_MAP.put("Minerals", VIEW_MODE_MINERAL);
-        VIEW_MODE_MAP.put("Age", VIEW_MODE_AGE);
-        VIEW_MODE_MAP.put("Family", VIEW_MODE_FAMILY);
-    }
-
-
-    private final JRadioButton baseButton = new JRadioButton("Base", true);
-    private final JRadioButton combinedButton = new JRadioButton("Combined", false);
-    private final JRadioButton energyButton = new JRadioButton("Energy", false);
-    private final JRadioButton mineralButton = new JRadioButton("Minerals", false);
-    private final JRadioButton ageButton = new JRadioButton("Age", false);
-    private final JRadioButton familyButton = new JRadioButton("Family", false);
-
-    JSlider perlinSlider = new JSlider (JSlider.HORIZONTAL, 0, 480, 300);
-    private final JButton mapButton = new JButton("Create Map");
-    private final JSlider sealevelSlider = new JSlider (JSlider.HORIZONTAL, 0, 256, 145);
-    private final JButton startButton = new JButton("Start/Stop");
-    private final JSlider drawstepSlider = new JSlider (JSlider.HORIZONTAL, 0, 40, 10);
-
-    private final GuiCallback guiCallback;
-
-    public Gui(GuiCallback guiCallback) {
-        this.guiCallback = guiCallback;
+    public Gui(World world, GuiCallback callback) {
+        this.world = world;
+        this.frame = new GuiFrame(callback);
     }
 
     public void init() {
-        setTitle("Genesis 1.2.0");
-        setSize(new Dimension(1800, 900));
-        Dimension sSize = Toolkit.getDefaultToolkit().getScreenSize(), fSize = getSize();
-        if (fSize.height > sSize.height) fSize.height = sSize.height;
-        if (fSize.width  > sSize.width) fSize.width = sSize.width;
-        //setLocation((sSize.width - fSize.width)/2, (sSize.height - fSize.height)/2);
-        setSize(new Dimension(sSize.width, sSize.height));
+        frame.init();
+    }
 
-        setDefaultCloseOperation (WindowConstants.EXIT_ON_CLOSE);
-        Container container = getContentPane();
+    public void paintMapView() {
+        World w = this.world;
+        final int sealevel = w.sealevel;
 
-        paintPanel.setLayout(new BorderLayout());// у этого лейаута приятная особенность - центральная часть растягивается автоматически
-        paintPanel.add(canvas, BorderLayout.CENTER);// добавляем нашу карту в центр
-        container.add(paintPanel);
+        int mapred;
+        int mapgreen;
+        int mapblue;
+        mapbuffer = frame.canvas.createImage(w.width * w.zoom, w.height * w.zoom); // ширина - высота картинки
+        Graphics g = mapbuffer.getGraphics();
 
-        JPanel statusPanel = new JPanel(new FlowLayout());
-        statusPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        statusPanel.setBorder(BorderFactory.createLoweredBevelBorder());
-        container.add(statusPanel, BorderLayout.SOUTH);
+        final BufferedImage image = new BufferedImage(w.width, w.height, BufferedImage.TYPE_INT_RGB);
+        final int[] rgb = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
-        generationLabel.setPreferredSize(new Dimension(140, 18));
-        generationLabel.setBorder(BorderFactory.createLoweredBevelBorder());
-        statusPanel.add(generationLabel);
-        populationLabel.setPreferredSize(new Dimension(140, 18));
-        populationLabel.setBorder(BorderFactory.createLoweredBevelBorder());
-        statusPanel.add(populationLabel);
-        organicLabel.setPreferredSize(new Dimension(140, 18));
-        organicLabel.setBorder(BorderFactory.createLoweredBevelBorder());
-        statusPanel.add(organicLabel);
-
-        JToolBar toolbar = new JToolBar();
-        toolbar.setOrientation(1);
-//        toolbar.setBorderPainted(true);
-//        toolbar.setBorder(BorderFactory.createLoweredBevelBorder());
-        container.add(toolbar, BorderLayout.WEST);
-
-        JLabel slider1Label = new JLabel("Map scale");
-        toolbar.add(slider1Label);
-
-        perlinSlider.setMajorTickSpacing(160);
-        perlinSlider.setMinorTickSpacing(80);
-        perlinSlider.setPaintTicks(true);
-        perlinSlider.setPaintLabels(true);
-        perlinSlider.setPreferredSize(new Dimension(100, perlinSlider.getPreferredSize().height));
-        perlinSlider.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        toolbar.add(perlinSlider);
-
-        //mapButton.addActionListener(new World.mapButtonAction());
-        toolbar.add(mapButton);
-
-        JLabel slider2Label = new JLabel("Sea level");
-        toolbar.add(slider2Label);
-
-        //sealevelSlider.addChangeListener(new World.sealevelSliderChange());
-        sealevelSlider.setMajorTickSpacing(128);
-        sealevelSlider.setMinorTickSpacing(64);
-        sealevelSlider.setPaintTicks(true);
-        sealevelSlider.setPaintLabels(true);
-        sealevelSlider.setPreferredSize(new Dimension(100, sealevelSlider.getPreferredSize().height));
-        sealevelSlider.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        toolbar.add(sealevelSlider);
-
-        //startButton.addActionListener(new World.startButtonAction());
-        toolbar.add(startButton);
-
-        JLabel slider3Label = new JLabel("Draw step");
-        toolbar.add(slider3Label);
-
-        //drawstepSlider.addChangeListener(new World.drawstepSliderChange());
-        drawstepSlider.setMajorTickSpacing(10);
-//        drawstepSlider.setMinimum(1);
-//        drawstepSlider.setMinorTickSpacing(64);
-        drawstepSlider.setPaintTicks(true);
-        drawstepSlider.setPaintLabels(true);
-        drawstepSlider.setPreferredSize(new Dimension(100, sealevelSlider.getPreferredSize().height));
-        drawstepSlider.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        toolbar.add(drawstepSlider);
-
-        ButtonGroup group = new ButtonGroup();
-        List<AbstractButton> radioButtons = Arrays.asList(baseButton, combinedButton, energyButton, mineralButton, ageButton, familyButton);
-        for (AbstractButton radioButton : radioButtons) {
-            group.add(radioButton);
-            toolbar.add(radioButton);
-        }
-
-        this.pack();
-        this.setVisible(true);
-        setExtendedState(MAXIMIZED_BOTH);
-
-        drawstepSlider.addChangeListener(e -> {
-            int ds = drawstepSlider.getValue();
-            if (ds == 0) ds = 1;
-            guiCallback.drawStepChanged(ds);
-        });
-
-        mapButton.addActionListener(e -> guiCallback.mapGenerationStarted(canvas.getWidth(), canvas.getHeight()));
-
-        sealevelSlider.addChangeListener(event -> guiCallback.seaLevelChanged(sealevelSlider.getValue()));
-
-        startButton.addActionListener(e -> {
-            boolean started = guiCallback.startedOrStopped();
-            perlinSlider.setEnabled(!started);
-            mapButton.setEnabled(!started);
-        });
-
-        ActionListener radioListener = e -> {
-            String action = e.getActionCommand();
-            Integer mode = VIEW_MODE_MAP.get(action);
-            if (mode != null) {
-                guiCallback.viewModeChanged(mode);
+        for (int i = 0; i < rgb.length; i++) {
+            final int elem = w.mapInGPU[i];
+            if (elem < sealevel) {                     // подводная часть
+                mapred = 5;
+                mapblue = 140 - (sealevel - elem) * 3;
+                mapgreen = 150 - (sealevel - elem) * 10;
+                if (mapgreen < 10) mapgreen = 10;
+                if (mapblue < 20) mapblue = 20;
+            } else {                                        // надводная часть
+                mapred = (int)(150 + (elem - sealevel) * 2.5);
+                mapgreen = (int)(100 + (elem - sealevel) * 2.6);
+                mapblue = 50 + (elem - sealevel) * 3;
+                if (mapred > 255) mapred = 255;
+                if (mapgreen > 255) mapgreen = 255;
+                if (mapblue > 255) mapblue = 255;
             }
-        };
-
-        for (AbstractButton radioButton : radioButtons) {
-            radioButton.addActionListener(radioListener);
+            rgb[i] = (mapred << 16) | (mapgreen << 8) | mapblue;
         }
+        g.drawImage(image, 0, 0, null);
+    }
+
+    public void paint1() {
+        World w = this.world;
+
+        Image buf = frame.canvas.createImage(w.width * w.zoom, w.height * w.zoom); //Создаем временный буфер для рисования
+        Graphics g = buf.getGraphics(); //подеменяем графику на временный буфер
+        g.drawImage(mapbuffer, 0, 0, null);
+
+        final BufferedImage image = new BufferedImage(w.width, w.height, BufferedImage.TYPE_INT_ARGB);
+        final int[] rgb = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+
+        w.population = 0; // todo incorrect responsibility
+        w.organic = 0; // todo incorrect responsibility
+        int mapred, mapgreen, mapblue;
+
+        while (w.currentbot != w.zerobot) {
+            if (w.currentbot.alive == 3) {                      // живой бот
+                if (viewMode == VIEW_MODE_BASE) {
+                    rgb[w.currentbot.y * w.width + w.currentbot.x] = (255 << 24) | (w.currentbot.c_red << 16) | (w.currentbot.c_green << 8) | w.currentbot.c_blue;
+                } else if (viewMode == VIEW_MODE_ENERGY) {
+                    mapgreen = 255 - (int) (w.currentbot.health * 0.25);
+                    if (mapgreen < 0) mapgreen = 0;
+                    rgb[w.currentbot.y * w.width + w.currentbot.x] = (255 << 24) | (255 << 16) | (mapgreen << 8) | 0;
+                } else if (viewMode == VIEW_MODE_MINERAL) {
+                    mapblue = 255 - (int) (w.currentbot.mineral * 0.5);
+                    if (mapblue < 0) mapblue = 0;
+                    rgb[w.currentbot.y * w.width + w.currentbot.x] = (255 << 24) | (0 << 16) | (255 << 8) | mapblue;
+                } else if (viewMode == VIEW_MODE_COMBINED) {
+                    mapgreen = (int) (w.currentbot.c_green * (1 - w.currentbot.health * 0.0005));
+                    if (mapgreen < 0) mapgreen = 0;
+                    mapblue = (int) (w.currentbot.c_blue * (0.8 - w.currentbot.mineral * 0.0005));
+                    rgb[w.currentbot.y * w.width + w.currentbot.x] = (255 << 24) | (w.currentbot.c_red << 16) | (mapgreen << 8) | mapblue;
+                } else if (viewMode == VIEW_MODE_AGE) {
+                    mapred = 255 - (int) (Math.sqrt(w.currentbot.age) * 4);
+                    if (mapred < 0) mapred = 0;
+                    rgb[w.currentbot.y * w.width + w.currentbot.x] = (255 << 24) | (mapred << 16) | (0 << 8) | 255;
+                } else if (viewMode == VIEW_MODE_FAMILY) {
+                    rgb[w.currentbot.y * w.width + w.currentbot.x] = w.currentbot.c_family;
+                }
+                w.population++;
+            } else if (w.currentbot.alive == 1) {                                            // органика, известняк, коралловые рифы
+                if (w.map[w.currentbot.x][w.currentbot.y] < w.sealevel) {                     // подводная часть
+                    mapred = 20;
+                    mapblue = 160 - (w.sealevel - w.map[w.currentbot.x][w.currentbot.y]) * 2;
+                    mapgreen = 170 - (w.sealevel - w.map[w.currentbot.x][w.currentbot.y]) * 4;
+                    if (mapblue < 40) mapblue = 40;
+                    if (mapgreen < 20) mapgreen = 20;
+                } else {                                    // скелетики, трупики на суше
+                    mapred = (int) (80 + (w.map[w.currentbot.x][w.currentbot.y] - w.sealevel) * 2.5);   // надводная часть
+                    mapgreen = (int) (60 + (w.map[w.currentbot.x][w.currentbot.y] - w.sealevel) * 2.6);
+                    mapblue = 30 + (w.map[w.currentbot.x][w.currentbot.y] - w.sealevel) * 3;
+                    if (mapred > 255) mapred = 255;
+                    if (mapblue > 255) mapblue = 255;
+                    if (mapgreen > 255) mapgreen = 255;
+                }
+                rgb[w.currentbot.y * w.width + w.currentbot.x] = (255 << 24) | (mapred << 16) | (mapgreen << 8) | mapblue;
+                w.organic++;
+            }
+            w.currentbot = w.currentbot.next;
+        }
+        w.currentbot = w.currentbot.next;
+
+        g.drawImage(image, 0, 0, null);
+
+        frame.generationLabel.setText(" Generation: " + String.valueOf(w.generation));
+        frame.populationLabel.setText(" Population: " + String.valueOf(w.population));
+        frame.organicLabel.setText(" Organic: " + String.valueOf(w.organic));
+
+        frame.buffer = buf;
+        frame.canvas.repaint();
     }
 }
