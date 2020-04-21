@@ -22,10 +22,14 @@ public class World implements GuiCallback,Consts {
     private Bot zerobot = new Bot(this);
     @Deprecated
     private Bot currentbot;
+    @Deprecated
     int generation;
     private int population;
     private int organic;
     private int viewMode = VIEW_MODE_BASE;
+
+    private long drawCounter = 0;
+    private long lastTimeStatusRefreshed;
 
     private Image buffer = null;
 
@@ -73,6 +77,7 @@ public class World implements GuiCallback,Consts {
         //perSide = 1;
         System.out.println("cores: " + cores);
         System.out.println("threads: " + perSide + "x" + perSide);
+        System.out.println("dims: " + width + "x" + height);
 
         List<BotCluster> clusters = new ArrayList<>();
 
@@ -105,11 +110,17 @@ public class World implements GuiCallback,Consts {
     @Override
     public boolean startedOrStopped() {
         if (threads == null) {
+            if (zerobot == null || zerobot.next == null) {
+                generateAdam();
+            }
             started = true;
             threads = new ArrayList<>(clusters.size());
+
             PaintThread paintThread = new PaintThread();
+            paintThread.setPriority(Thread.MAX_PRIORITY);
             threads.add(paintThread);
             paintThread.start();
+
             boolean doIncrement = true;
             for (BotCluster cluster : clusters) {
                 thread = new WorkerMT(cluster, doIncrement);
@@ -169,6 +180,7 @@ public class World implements GuiCallback,Consts {
 
 //    @Override
     public void paint1() {
+        final long now = System.currentTimeMillis();
 
         Image buf = gui.canvas.createImage(width * zoom, height * zoom); //Создаем временный буфер для рисования
         Graphics g = buf.getGraphics(); //подеменяем графику на временный буфер
@@ -239,12 +251,35 @@ public class World implements GuiCallback,Consts {
 
         g.drawImage(image, 0, 0, null);
 
-        gui.generationLabel.setText(" Generation: " + String.valueOf(generation));
-        gui.populationLabel.setText(" Population: " + String.valueOf(population));
-        gui.organicLabel.setText(" Organic: " + String.valueOf(organic));
-
         gui.buffer = buf;
         gui.canvas.repaint();
+
+        if (now - lastTimeStatusRefreshed > 150) {
+            gui.generationLabel.setText("Generation: " + calcGeneration() + " (" + generation + ")");
+            gui.populationLabel.setText("Population: " + calcPopulation() + " (" + population + ")");
+            gui.organicLabel.setText("Organic: " + organic);
+            lastTimeStatusRefreshed = now;
+        }
+
+        drawCounter++;
+    }
+
+    private long calcGeneration() {
+        long max = 0;
+        for (BotCluster cluster : clusters) {
+            if (max < cluster.generation) {
+                max = cluster.generation;
+            }
+        }
+        return max;
+    }
+
+    private long calcPopulation() {
+        long sum = 0;
+        for (BotCluster cluster : clusters) {
+            sum += cluster.population;
+        }
+        return sum;
     }
 
     class Worker extends Thread {
@@ -296,14 +331,18 @@ public class World implements GuiCallback,Consts {
             final int right = rect.x + rect.width;
             final int bottom = rect.y + rect.height;
             while (started) {
+                long population = 0;
                 for (int i = rect.x; i < right; i++) {
                     for (int j = rect.y; j < bottom; j++) {
                         Bot bot = cluster.matrix[i][j];
                         if (bot != null && bot.isAlive()) {
+                            population++;
                             bot.step();
                         }
                     }
                 }
+                cluster.generation++;
+                cluster.population = population;
                 if (doIncrement) {
                     generation++;
                 }
@@ -342,10 +381,10 @@ public class World implements GuiCallback,Consts {
         this.map = new int[width][height];
         this.matrix = new Bot[width][height];
 
-        Perlin2D perlin = new Perlin2D(seed);
+        final Perlin2D perlin = new Perlin2D(seed);
+        final float f = (float) gui.perlinSlider.getValue();
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                float f = (float) gui.perlinSlider.getValue();
                 float value = perlin.getNoise(x/f,y/f,8,0.45f);        // вычисляем точку ландшафта
                 map[x][y] = (int)(value * 255 + 128) & 255;
             }
