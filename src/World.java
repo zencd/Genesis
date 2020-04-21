@@ -1,8 +1,5 @@
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 /**
@@ -33,7 +30,10 @@ public class World implements Consts {
     private final double[] randMemory; // массив предгенерированных случайных чисел
     private int randIdx = 0;
 
-    private List<Cluster> clusters;
+    List<Cluster> clusters;
+
+    private long timeStarted;
+    private long botsProcessed;
 
     public World(double[] randMemory, Supplier<Long> mapSeeder) {
         this.randMemory = randMemory;
@@ -82,29 +82,53 @@ public class World implements Consts {
         }
     }
 
-    private final Cluster findCluster(Bot bot) {
+    final Cluster findCluster(Bot bot) {
         return clusters.get(0); // todo a single cluster yet
     }
 
     final void iterate1() {
+        int proc1 = 0;
+        int proc2 = 0;
         while (currentbot != zerobot) {
-            if (currentbot.alive == 3) currentbot.step();
+            proc1++;
+            if (currentbot.alive == 3) {
+                currentbot.step();
+                proc2++;
+            }
             currentbot = currentbot.next;
         }
         currentbot = currentbot.next;
         generation++;
+
+        final long tookSinceStart = System.currentTimeMillis() - timeStarted;
+        this.botsProcessed += proc2;
+        double sec = tookSinceStart / 1000d;
+        long speed = (long) (this.botsProcessed / sec / 1000);
+        System.out.println("gen: " + generation + ", proc1: " + proc1 + ", proc2: " + proc2 + ", speed: " + speed + " KB/sec");
     }
 
     final void iterate2() {
+        assert clusters.size() == 1;
         for (Cluster cluster : clusters) {
-            //Collections.newSetFromMap(new ConcurrentHashMap<>())
-            HashSet<Bot> bots2 = new HashSet<>(cluster.bots); // todo heavy load
-            for (Bot bot : bots2) {
+            final Bot[] bots = cluster.getArray();
+            final int size = cluster.size();
+            long start = System.currentTimeMillis();
+            int proc = 0;
+            for (int i = 0; i < size; i++) {
+                Bot bot = bots[i];
                 if (bot.alive == 3) {
                     bot.step();
+                    proc++;
                 }
             }
+            final long tookSinceStart = System.currentTimeMillis() - timeStarted;
+            this.botsProcessed += proc;
+            double sec = tookSinceStart / 1000d;
+            long speed = (long) (this.botsProcessed / sec / 1000);
+            long took = System.currentTimeMillis() - start;
+            System.out.println("gen: " + generation + ", bots: " + size + ", speed: " + speed + " KB/sec");
         }
+        //currentbot = clusters.get(0).bots.iterator().next();
         generation++;
     }
 
@@ -117,8 +141,11 @@ public class World implements Consts {
         public void run() {
             while (started) {       // обновляем матрицу
                 long now = System.currentTimeMillis();
-                iterate1();
-                //iterate2();
+                if (ALGO == 1) {
+                    iterate1();
+                } else {
+                    iterate2();
+                }
                 //long time2 = System.currentTimeMillis();
 //                System.out.println("Step execute " + ": " + (time2-time1) + "");
                 if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
@@ -130,6 +157,8 @@ public class World implements Consts {
     }
 
     void start(GuiManager gui) {
+        timeStarted = System.currentTimeMillis();
+        botsProcessed = 0;
         thread = new Worker(gui); // создаем новый поток
         started	= true;         // Флаг работы потока, если false  поток заканчивает работу
         thread.start();

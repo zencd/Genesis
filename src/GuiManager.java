@@ -66,6 +66,14 @@ public class GuiManager implements Consts {
     }
 
     public void paintWorld() {
+        if (ALGO == 1) {
+            paintWorld1();
+        } else {
+            paintWorld2();
+        }
+    }
+
+    private void paintWorld1() {
         final World w = this.world;
         final int width = w.width;
         final int height = w.height;
@@ -128,6 +136,83 @@ public class GuiManager implements Consts {
             w.currentbot = w.currentbot.next;
         }
         w.currentbot = w.currentbot.next;
+
+        g.drawImage(image, 0, 0, null);
+
+        frame.generationLabel.setText(" Generation: " + w.generation);
+        frame.populationLabel.setText(" Population: " + w.population);
+        frame.organicLabel.setText(" Organic: " + w.organic);
+
+        frame.buffer = buf;
+        frame.canvas.repaint();
+    }
+
+    private void paintWorld2() {
+        final World w = this.world;
+        final int width = w.width;
+        final int height = w.height;
+
+        final Image buf = frame.canvas.createImage(width * w.zoom, height * w.zoom); //Создаем временный буфер для рисования
+        final Graphics g = buf.getGraphics(); //подеменяем графику на временный буфер
+        g.drawImage(mapBuffer, 0, 0, null);
+
+        final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+        final int[] rgb = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+
+        w.population = 0; // todo incorrect responsibility
+        w.organic = 0; // todo incorrect responsibility
+
+        for (Cluster cluster : w.clusters) {
+            final Bot[] bots = cluster.getArray();
+            final int size = cluster.size();
+            for (int i = 0; i < size; i++) {
+                Bot bot = bots[i];
+                int red, green, blue;
+                if (bot.alive == 3) {                      // живой бот
+                    final int viewMode = this.viewMode;
+                    if (viewMode == VIEW_MODE_BASE) {
+                        rgb[bot.y * width + bot.x] = (255 << 24) | (bot.c_red << 16) | (bot.c_green << 8) | bot.c_blue;
+                    } else if (viewMode == VIEW_MODE_ENERGY) {
+                        green = 255 - (int) (bot.health * 0.25);
+                        if (green < 0) green = 0;
+                        rgb[bot.y * width + bot.x] = (255 << 24) | (255 << 16) | (green << 8) | 0;
+                    } else if (viewMode == VIEW_MODE_MINERAL) {
+                        blue = 255 - (int) (bot.mineral * 0.5);
+                        if (blue < 0) blue = 0;
+                        rgb[bot.y * width + bot.x] = (255 << 24) | (0 << 16) | (255 << 8) | blue;
+                    } else if (viewMode == VIEW_MODE_COMBINED) {
+                        green = (int) (bot.c_green * (1 - bot.health * 0.0005));
+                        if (green < 0) green = 0;
+                        blue = (int) (bot.c_blue * (0.8 - bot.mineral * 0.0005));
+                        rgb[bot.y * width + bot.x] = (255 << 24) | (bot.c_red << 16) | (green << 8) | blue;
+                    } else if (viewMode == VIEW_MODE_AGE) {
+                        red = 255 - (int) (Math.sqrt(bot.age) * 4);
+                        if (red < 0) red = 0;
+                        rgb[bot.y * width + bot.x] = (255 << 24) | (red << 16) | (0 << 8) | 255;
+                    } else if (viewMode == VIEW_MODE_FAMILY) {
+                        rgb[bot.y * width + bot.x] = bot.c_family;
+                    }
+                    w.population++;
+                } else if (bot.alive == 1) {                                            // органика, известняк, коралловые рифы
+                    if (w.map[bot.x][bot.y] < w.sealevel) {                     // подводная часть
+                        red = 20;
+                        blue = 160 - (w.sealevel - w.map[bot.x][bot.y]) * 2;
+                        green = 170 - (w.sealevel - w.map[bot.x][bot.y]) * 4;
+                        if (blue < 40) blue = 40;
+                        if (green < 20) green = 20;
+                    } else {                                    // скелетики, трупики на суше
+                        red = (int) (80 + (w.map[bot.x][bot.y] - w.sealevel) * 2.5);   // надводная часть
+                        green = (int) (60 + (w.map[bot.x][bot.y] - w.sealevel) * 2.6);
+                        blue = 30 + (w.map[bot.x][bot.y] - w.sealevel) * 3;
+                        if (red > 255) red = 255;
+                        if (blue > 255) blue = 255;
+                        if (green > 255) green = 255;
+                    }
+                    rgb[bot.y * width + bot.x] = (255 << 24) | (red << 16) | (green << 8) | blue;
+                    w.organic++;
+                }
+            }
+        }
 
         g.drawImage(image, 0, 0, null);
 

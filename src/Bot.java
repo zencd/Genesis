@@ -37,6 +37,8 @@ public class Bot {
     final World world;
     Cluster cluster;
 
+    int clusterPos = -1;
+
     Bot(World world) {
         this.world = world;
     }
@@ -340,6 +342,7 @@ public class Bot {
     //=====  превращение бота в органику    ===========
     private void bot2Organic() {
         alive = LV_ORGANIC_HOLD;       // отметим в массиве bots[], что бот органика
+        //world.findCluster(this).remove(this);
     }
 
 
@@ -382,6 +385,9 @@ public class Bot {
 
         bot.prev.next = bot.next;            // удаление бота из цепочки
         bot.next.prev = bot.prev;            // связывающей всех ботов
+
+        //bot.cluster.remove(this);
+        //bot.world.findCluster(bot).remove(this);
     }
 
 

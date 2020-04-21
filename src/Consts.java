@@ -8,4 +8,6 @@ public interface Consts {
 
     int PERLIN_DEFAULT = 300;
     int SEA_LEVEL_DEFAULT = 145;
+
+    int ALGO = 2;
 }
