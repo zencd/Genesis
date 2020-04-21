@@ -182,7 +182,7 @@ public class World implements GuiCallback,Consts {
         int mapred, mapgreen, mapblue;
 
         while (currentbot != null && currentbot != zerobot) {
-            if (currentbot.alive == 3) {                      // живой бот
+            if (currentbot.alive == LV_ALIVE) {                      // живой бот
                 if (viewMode == VIEW_MODE_BASE) {
                     rgb[currentbot.y * width + currentbot.x] = (255 << 24) | (currentbot.c_red << 16) | (currentbot.c_green << 8) | currentbot.c_blue;
                 } else if (viewMode == VIEW_MODE_ENERGY) {
@@ -206,7 +206,7 @@ public class World implements GuiCallback,Consts {
                     rgb[currentbot.y * width + currentbot.x] = currentbot.c_family;
                 }
                 population++;
-            } else if (currentbot.alive == 1) {                                            // органика, известняк, коралловые рифы
+            } else if (currentbot.alive == LV_ORGANIC) {                                            // органика, известняк, коралловые рифы
                 if (map[currentbot.x][currentbot.y] < sealevel) {                     // подводная часть
                     mapred = 20;
                     mapblue = 160 - (sealevel - map[currentbot.x][currentbot.y]) * 2;
@@ -253,7 +253,7 @@ public class World implements GuiCallback,Consts {
             while (started) {       // обновляем матрицу
                 long time1 = System.currentTimeMillis();
                 while (currentbot != zerobot) {
-                    if (currentbot.alive == 3) currentbot.step();
+                    if (currentbot.alive == LV_ALIVE) currentbot.step();
                     currentbot = currentbot.next;
                 }
                 currentbot = currentbot.next;
@@ -338,7 +338,7 @@ public class World implements GuiCallback,Consts {
 
     // генерируем карту
     public void generateMap(int seed) {
-        generation = 0;
+        generation = 0; // todo not a map gen's responsibility
         this.map = new int[width][height];
         this.matrix = new Bot[width][height];
 
@@ -364,6 +364,8 @@ public class World implements GuiCallback,Consts {
         Bot bot = new Bot(this);
         zerobot.prev = bot;
         zerobot.next = bot;
+        bot.prev = zerobot;     // ссылка на предыдущего
+        bot.next = zerobot;     // ссылка на следующего
 
         bot.adr = 0;            // начальный адрес генома
         bot.x = width / 2;      // координаты бота
@@ -372,17 +374,13 @@ public class World implements GuiCallback,Consts {
         //bot.y = 200;
         bot.health = 990;       // энергия
         bot.mineral = 0;        // минералы
-        bot.alive = 3;          // бот живой
+        bot.alive = LV_ALIVE;          // бот живой
         bot.age = 0;            // возраст
         bot.c_red = 170;        // задаем цвет бота
         bot.c_blue = 170;
         bot.c_green = 170;
         bot.direction = 5;      // направление
-        bot.prev = zerobot;     // ссылка на предыдущего
-        bot.next = zerobot;     // ссылка на следующего
-        for (int i = 0; i < 64; i++) {          // заполняем геном командой 32 - фотосинтез
-            bot.mind[i] = 32;
-        }
+        bot.initMind(CMD_PHOTOSYNTHESIS);
 
         clusters.get(0).add(bot);
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу

@@ -1,10 +1,10 @@
-public class Bot {
+public class Bot implements Consts {
 
-    public static final int LV_ORGANIC_HOLD = 1;           // органика
-    public static final int LV_ALIVE = 3;                  // живой бот
-    private static final int MIND_SIZE = 64;                // объем памяти генома
+    //public static final int LV_ORGANIC_HOLD = 1;           // органика
+    //public static final int LV_ALIVE = 3;                  // живой бот
+    //private static final byte MIND_SIZE = 64;                // объем памяти генома
 
-    private static double[] randMemory = new double[1000000];   // массив предгенерированных случайных чисел
+    private static final double[] randMemory = new double[1000000];   // массив предгенерированных случайных чисел
     private static int randIdx = 0;                             // указатель текущего случайного числа
     static {                                                    // предгенерация массива случайных чисел
         for (int i = 0; i < randMemory.length; i++) {
@@ -13,7 +13,7 @@ public class Bot {
     }
 
 
-    byte[] mind = new byte[MIND_SIZE];               // геном бота
+    final byte[] mind = new byte[MIND_SIZE];               // геном бота
 
     int adr;                 // указатель текущей команды
     int x;                   // координаты
@@ -32,7 +32,7 @@ public class Bot {
     Bot prev;                // предыдущий в цепочке просчета
     Bot next;                // следующий в цепочке просчета
 
-    World world;
+    private final World world;
 
     public Bot(World world) {
         this.world = world;
@@ -54,7 +54,7 @@ public class Bot {
 //*******************************************************************
 //................      мутировать   ................................
                 case 0:
-                    botMutate();
+                    mutate2Gene();
                     botIncAdr(1);   // смещаем указатель текущей команды на 1
                     breakflag = 1;     // выходим, так как команда завершающая
                     break;
@@ -84,7 +84,7 @@ public class Bot {
 
 //*******************************************************************
 //...............  фотосинтез .......................................
-                case 32:
+                case CMD_PHOTOSYNTHESIS:
                     botEatSun();
                     botIncAdr(1);
                     breakflag = 1;
@@ -327,21 +327,22 @@ public class Bot {
     //жжжжжжжжжжжжжжжжжжжхжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж
     //=====  превращение бота в органику    ===========
     private void bot2Organic() {
-        alive = LV_ORGANIC_HOLD;       // отметим в массиве bots[], что бот органика
+        alive = LV_ORGANIC;       // отметим в массиве bots[], что бот органика
         // todo remove the bot from cluster
     }
 
 
     //жжжжжжжжжжжжжжжжжжжхжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж
     //===== изменяет случайный байт в геноме  ==============
-    private void botMutate() {
-        int ma = (int) (rand() * MIND_SIZE);    // 0..63 // меняются случайным образом две случайные команды
-        int mc = (int) (rand() * MIND_SIZE);    // 0..63
-        mind[ma] = (byte) mc;
-        ma = (int) (rand() * MIND_SIZE);        // 0..63
-        mc = (int) (rand() * MIND_SIZE);        // 0..63
-        mind[ma] = (byte) mc;
+    private void mutate2Gene() {
+        mind[randByte(MIND_SIZE)] = randByte(MIND_SIZE);
+        mind[randByte(MIND_SIZE)] = randByte(MIND_SIZE);
     }
+
+    private void mutate1Gene() {
+        mind[randByte(MIND_SIZE)] = randByte(MIND_SIZE);
+    }
+
 
 
     //жжжжжжжжжжжжжжжжжжжхжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж
@@ -355,8 +356,8 @@ public class Bot {
     //===== без проверок                    ==============
     //===== in - номер бота и новые координаты ===========
     private void moveBot(int xt, int yt) {
-        world.matrix[xt][yt] = this;
         world.matrix[x][y] = null;
+        world.matrix[xt][yt] = this;
         x = xt;
         y = yt;
     }
@@ -378,7 +379,7 @@ public class Bot {
     // ...  бот получает энергию солнца в зависимости от глубины   ...............
     // ...  и количества минералов, накопленных ботом              ...............
     private void botEatSun() {
-        int t;
+        final int t;
         if (mineral < 100) {
             t = 0;
         } else if (mineral < 400) {
@@ -388,8 +389,8 @@ public class Bot {
         }
 
         int hlt = 0;
-        int level = world.map[x][y];
-        int sealevel = world.sealevel;
+        final int level = world.map[x][y];
+        final int sealevel = world.sealevel;
         if ((level > sealevel) && (level <= sealevel + 60)) {
             hlt = t + (int) ((sealevel + 60 - level) * 0.2); // формула вычисления энергии
         }
@@ -428,7 +429,7 @@ public class Bot {
             return 2;                       // и функция возвращает 2
         }
         // осталось 2 варианта: ограника или бот
-        if (world.matrix[xt][yt].alive == LV_ORGANIC_HOLD) { // если на клетке находится органика
+        if (world.matrix[xt][yt].alive == LV_ORGANIC) { // если на клетке находится органика
             return 4;                       // то возвращаем 4
         }
         if (isRelative(world.matrix[xt][yt])) {  // если на клетке родня
@@ -457,7 +458,7 @@ public class Bot {
             return 2;
         }
         // осталось 2 варианта: ограника или бот
-        else if (another.alive == LV_ORGANIC_HOLD) {   // если там оказалась органика
+        else if (another.alive == LV_ORGANIC) {   // если там оказалась органика
             deleteBot(another);                        // то удаляем её из списков
             health = health + 100;          //здоровье увеличилось на 100
             goRed(100);               // бот покраснел
@@ -509,7 +510,7 @@ public class Bot {
             return 3;
         } else if (world.matrix[xt][yt] == null) {       // если клетка пустая возвращаем 2
             return 2;
-        } else if (world.matrix[xt][yt].alive == LV_ORGANIC_HOLD) { // если органика возвращаем 4
+        } else if (world.matrix[xt][yt].alive == LV_ORGANIC) { // если органика возвращаем 4
             return 4;
         } else if (isRelative(world.matrix[xt][yt])) {   // если родня, то возвращаем 6
             return 6;
@@ -540,20 +541,22 @@ public class Bot {
 
     //======== атака на геном соседа, меняем случайны ген случайным образом  ===============
     private void botGenAttack() {   // вычисляем кто перед ботом (используется только относительное направление)
-        int xt = xFromVektorR(0);
-        int yt = yFromVektorR(0);
-        if ((yt >= 0) && (yt < world.height) && (world.matrix[xt][yt] != null)) {
-            if (world.matrix[xt][yt].alive == LV_ALIVE) { // если там живой бот
-                health = health - 10;               // то атакуюий бот теряет на атаку 10 энергии
-                if (health > 0) {                   // если он при этом не умер
-                    int ma = (int) (rand() * 64);   // 0..63 // то у жертвы случайным образом меняется один ген
-                    int mc = (int) (rand() * 64);   // 0..63
-                    world.matrix[xt][yt].mind[ma] = (byte) mc;
+        final int xt = xFromVektorR(0);
+        final int yt = yFromVektorR(0);
+        if ((yt >= 0) && (yt < world.height)) {
+            Bot bot = world.matrix[xt][yt];
+            if (bot != null) {
+                if (bot.alive == LV_ALIVE) { // если там живой бот
+                    health = health - 10;               // то атакуюий бот теряет на атаку 10 энергии
+                    if (health > 0) {
+                        // если он при этом не умер
+                        // то у жертвы случайным образом меняется один ген
+                        bot.mutate1Gene();
+                    }
                 }
             }
         }
     }
-
 
     //==========               поделится          ====================================================
     // =========  если у бота больше энергии или минералов, чем у соседа в заданном направлении  =====
@@ -571,7 +574,7 @@ public class Bot {
         final Bot another = world.matrix[xt][yt];
         if (another == null) {  // если клетка пустая возвращаем 2
             return 2;
-        } else if (another.alive == LV_ORGANIC_HOLD) { // если органика возвращаем 4
+        } else if (another.alive == LV_ORGANIC) { // если органика возвращаем 4
             return 4;
         }
         //------- если мы здесь, то в данном направлении живой ----------
@@ -608,7 +611,7 @@ public class Bot {
             return 3;
         } else if (world.matrix[xt][yt] == null) {  // если клетка пустая возвращаем 2
             return 2;
-        } else if (world.matrix[xt][yt].alive == LV_ORGANIC_HOLD) { // если органика возвращаем 4
+        } else if (world.matrix[xt][yt].alive == LV_ORGANIC) { // если органика возвращаем 4
             return 4;
         }
         //------- если мы здесь, то в данном направлении живой ----------
@@ -643,10 +646,10 @@ public class Bot {
             return;
         }
 
-        Bot newbot = new Bot(world);
+        final Bot newbot = new Bot(world);
 
         final int xt = xFromVektorR(n);       // координаты X и Y
-        int yt = yFromVektorR(n);
+        final int yt = yFromVektorR(n);
 
         System.arraycopy(mind, 0, newbot.mind, 0, MIND_SIZE);
 
@@ -667,13 +670,11 @@ public class Bot {
         newbot.c_family = c_family;     // цвет семьи такой же, как у предка
 
         if (rand() < 0.25) {     // в одном случае из четырех случайным образом меняем один случайный байт в геноме
-            int ma = (int) (rand() * MIND_SIZE);  // 0..63
-            int mc = (int) (rand() * MIND_SIZE);  // 0..63
-            newbot.mind[ma] = (byte) mc;
+            newbot.mutate1Gene();
             newbot.c_family = getNewColor(c_family);    // цвет семьи вычисляем новый
         }
 
-        newbot.direction = (int) (rand() * 8);  // направление, куда повернут новорожденный, генерируется случайно
+        newbot.direction = rand(8);  // направление, куда повернут новорожденный, генерируется случайно
 
         newbot.prev = prev;                     // вставляем нового бота между ботом-предком и предыдущим ботом
         prev.next = newbot;                     // в цепочке ссылок, которая объединяет всех ботов
@@ -781,7 +782,7 @@ public class Bot {
     //========   in - номер бота                =====
     //========   out- 1 - да, 2 - нет           =====
     private int isHealthGrow() {
-        int t;
+        final int t;
         if (mineral < 100) {
             t = 0;
         } else {
@@ -909,6 +910,14 @@ public class Bot {
     }
 
 
+    private byte randByte(byte max) {
+        return (byte) (rand() * max);
+    }
+
+    private int rand(int max) {
+        return (int) (rand() * max);
+    }
+
     private double rand() {
         randIdx++;
         if (randIdx >= randMemory.length) {
@@ -921,4 +930,9 @@ public class Bot {
         return alive == LV_ALIVE;
     }
 
+    public final void initMind(byte cmd) {
+        for (int i = 0; i < MIND_SIZE; i++) {
+            mind[i] = cmd;
+        }
+    }
 }

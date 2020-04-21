@@ -1,4 +1,11 @@
 public interface Consts {
+    int LV_ORGANIC = 1;           // органика
+    int LV_ALIVE = 3;                  // живой бот
+
+    byte MIND_SIZE = 64;                // объем памяти генома
+
+    byte CMD_PHOTOSYNTHESIS = 32;
+
     int VIEW_MODE_BASE = 0;
     int VIEW_MODE_COMBINED = 1;
     int VIEW_MODE_ENERGY = 2;
