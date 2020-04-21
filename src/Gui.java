@@ -1,4 +1,7 @@
 import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.CompoundBorder;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
@@ -10,16 +13,16 @@ public class Gui extends JFrame implements Consts {
 
     Image buffer = null;
 
-    JPanel canvas = new JPanel() {
+    final JPanel canvas = new JPanel() {
         public void paint(Graphics g) {
             g.drawImage(buffer, 0, 0, null);
         }
     };
 
-    JPanel paintPanel = new JPanel(new FlowLayout());
-    JLabel generationLabel = new JLabel(" Generation: 0 ");
-    JLabel populationLabel = new JLabel(" Population: 0 ");
-    JLabel organicLabel = new JLabel(" Organic: 0 ");
+    final JPanel paintPanel = new JPanel(new FlowLayout());
+    final JLabel generationLabel = new JLabel("Generation: 0");
+    final JLabel populationLabel = new JLabel("Population: 0");
+    final JLabel organicLabel = new JLabel("Organic: 0");
 
     public static final Map<String,Integer> VIEW_MODE_MAP = new HashMap<>();
     static {
@@ -42,7 +45,7 @@ public class Gui extends JFrame implements Consts {
     private final JRadioButton ageButton = new JRadioButton("Age", false);
     private final JRadioButton familyButton = new JRadioButton("Family", false);
 
-    JSlider perlinSlider = new JSlider (JSlider.HORIZONTAL, 0, 480, 300);
+    final JSlider perlinSlider = new JSlider (JSlider.HORIZONTAL, 0, 480, 300);
     private final JButton mapButton = new JButton("Create Map");
     private final JSlider sealevelSlider = new JSlider (JSlider.HORIZONTAL, 0, 256, SEA_LEVEL_DEFAULT);
     private final JButton startButton = new JButton(BUTTON_START);
@@ -57,41 +60,43 @@ public class Gui extends JFrame implements Consts {
     public void init() {
         setTitle("Genesis 1.2.0");
         setSize(new Dimension(1800, 900));
-        Dimension sSize = Toolkit.getDefaultToolkit().getScreenSize(), fSize = getSize();
+        final Dimension sSize = Toolkit.getDefaultToolkit().getScreenSize(), fSize = getSize();
         if (fSize.height > sSize.height) fSize.height = sSize.height;
         if (fSize.width  > sSize.width) fSize.width = sSize.width;
         //setLocation((sSize.width - fSize.width)/2, (sSize.height - fSize.height)/2);
         setSize(new Dimension(sSize.width, sSize.height));
 
         setDefaultCloseOperation (WindowConstants.EXIT_ON_CLOSE);
-        Container container = getContentPane();
+        final Container container = getContentPane();
 
         paintPanel.setLayout(new BorderLayout());// у этого лейаута приятная особенность - центральная часть растягивается автоматически
         paintPanel.add(canvas, BorderLayout.CENTER);// добавляем нашу карту в центр
         container.add(paintPanel);
 
-        JPanel statusPanel = new JPanel(new FlowLayout());
+        final JPanel statusPanel = new JPanel(new FlowLayout());
         statusPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        statusPanel.setBorder(BorderFactory.createLoweredBevelBorder());
+        //statusPanel.setBorder(BorderFactory.createLoweredBevelBorder());
         container.add(statusPanel, BorderLayout.SOUTH);
 
-        generationLabel.setPreferredSize(new Dimension(140, 18));
-        generationLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        final Border statusCellBorder = new CompoundBorder(BorderFactory.createLoweredBevelBorder(), new EmptyBorder(0,4,0,4));
+
+        generationLabel.setPreferredSize(new Dimension(200, 18));
+        generationLabel.setBorder(statusCellBorder);
         statusPanel.add(generationLabel);
-        populationLabel.setPreferredSize(new Dimension(140, 18));
-        populationLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        populationLabel.setPreferredSize(new Dimension(200, 18));
+        populationLabel.setBorder(statusCellBorder);
         statusPanel.add(populationLabel);
         organicLabel.setPreferredSize(new Dimension(140, 18));
-        organicLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        organicLabel.setBorder(statusCellBorder);
         statusPanel.add(organicLabel);
 
-        JToolBar toolbar = new JToolBar();
-        toolbar.setOrientation(1);
+        final JToolBar toolbar = new JToolBar();
+        toolbar.setOrientation(SwingConstants.VERTICAL);
 //        toolbar.setBorderPainted(true);
 //        toolbar.setBorder(BorderFactory.createLoweredBevelBorder());
         container.add(toolbar, BorderLayout.WEST);
 
-        JLabel slider1Label = new JLabel("Map scale");
+        final JLabel slider1Label = new JLabel("Map scale");
         toolbar.add(slider1Label);
 
         perlinSlider.setMajorTickSpacing(160);
@@ -105,7 +110,7 @@ public class Gui extends JFrame implements Consts {
         //mapButton.addActionListener(new World.mapButtonAction());
         toolbar.add(mapButton);
 
-        JLabel slider2Label = new JLabel("Sea level");
+        final JLabel slider2Label = new JLabel("Sea level");
         toolbar.add(slider2Label);
 
         //sealevelSlider.addChangeListener(new World.sealevelSliderChange());
@@ -120,7 +125,7 @@ public class Gui extends JFrame implements Consts {
         //startButton.addActionListener(new World.startButtonAction());
         toolbar.add(startButton);
 
-        JLabel slider3Label = new JLabel("Draw step");
+        final JLabel slider3Label = new JLabel("Draw step");
         toolbar.add(slider3Label);
 
         //drawstepSlider.addChangeListener(new World.drawstepSliderChange());
@@ -133,17 +138,12 @@ public class Gui extends JFrame implements Consts {
         drawstepSlider.setAlignmentX(JComponent.LEFT_ALIGNMENT);
         toolbar.add(drawstepSlider);
 
-        ButtonGroup group = new ButtonGroup();
+        final ButtonGroup group = new ButtonGroup();
         List<AbstractButton> radioButtons = Arrays.asList(baseButton, combinedButton, energyButton, mineralButton, ageButton, familyButton);
         for (AbstractButton radioButton : radioButtons) {
             group.add(radioButton);
             toolbar.add(radioButton);
         }
-
-        this.pack();
-        //this.setSize(1600, 700);
-        setExtendedState(MAXIMIZED_BOTH);
-        this.setVisible(true);
 
         drawstepSlider.addChangeListener(e -> {
             int ds = drawstepSlider.getValue();
@@ -162,7 +162,7 @@ public class Gui extends JFrame implements Consts {
             startButton.setText(started ? BUTTON_STOP : BUTTON_START);
         });
 
-        ActionListener radioListener = e -> {
+        final ActionListener radioListener = e -> {
             String action = e.getActionCommand();
             Integer mode = VIEW_MODE_MAP.get(action);
             if (mode != null) {
@@ -173,5 +173,10 @@ public class Gui extends JFrame implements Consts {
         for (AbstractButton radioButton : radioButtons) {
             radioButton.addActionListener(radioListener);
         }
+
+        this.pack();
+        //this.setSize(1600, 700);
+        setExtendedState(MAXIMIZED_BOTH);
+        this.setVisible(true);
     }
 }
