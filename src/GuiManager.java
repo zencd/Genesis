@@ -163,6 +163,7 @@ public class GuiManager implements Consts {
         w.organic = 0; // todo incorrect responsibility
 
         for (Cluster cluster : w.clusters) {
+            // todo check cluster not changed
             Bot first = cluster.getStart();
             Bot bot = first;
             for (int i = 0; bot != first || i == 0; i++) {

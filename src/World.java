@@ -24,6 +24,7 @@ public class World implements Consts {
     int perlinValue = PERLIN_DEFAULT;
 
     private Thread thread = null;
+    private Thread paintThread = null;
     private boolean started = false; // поток работает?
 
     private final Supplier<Long> mapSeeder; // возвращает seed только для построения карты
@@ -138,7 +139,7 @@ public class World implements Consts {
 
     private class Worker extends Thread {
         private final GuiManager gui;
-        private long lastTimePainted = 0;
+        //private long lastTimePainted = 0;
         Worker(GuiManager gui) {
             this.gui = gui;
         }
@@ -152,27 +153,51 @@ public class World implements Consts {
                 }
                 //long time2 = System.currentTimeMillis();
 //                System.out.println("Step execute " + ": " + (time2-time1) + "");
-                if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
-                    gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
-                    lastTimePainted = now;
-                }
+//                if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
+                    //gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
+                    //lastTimePainted = now;
+                //}
             }
-            System.out.println("worker thread finished");
+            //System.out.println("worker thread finished");
+        }
+    }
+
+    private class PaintWorker extends Thread {
+        private final GuiManager gui;
+        private long lastTimePainted = 0;
+        PaintWorker(GuiManager gui) {
+            this.gui = gui;
+        }
+        public void run() {
+            try {
+                while (started) {
+                    Thread.sleep(15);
+                    gui.paintWorld();
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 
     void start(GuiManager gui) {
         timeStarted = System.currentTimeMillis();
         botsProcessed = 0;
-        thread = new Worker(gui); // создаем новый поток
         started	= true;         // Флаг работы потока, если false  поток заканчивает работу
+
+        thread = new Worker(gui); // создаем новый поток
         thread.start();
+
+        paintThread = new PaintWorker(gui);
+        paintThread.start();
     }
 
     void stop() {
         started = false;        //Выставляем влаг
         Utils.joinSafe(thread);
+        Utils.joinSafe(paintThread);
         thread = null;
+        paintThread = null;
     }
 
     // делаем паузу
