@@ -48,7 +48,7 @@ public class World implements Consts {
         width = canvasWidth / zoom;    // Ширина доступной части экрана для рисования карты
         height = canvasHeight / zoom;
         clusters = new ArrayList<>();
-        clusters.add(new Cluster());
+        clusters.add(new Cluster(this));
         generateMap(mapSeeder.get());
         generateAdam();
     }
@@ -64,22 +64,19 @@ public class World implements Consts {
         final Cluster newCluster = findCluster(bot);
         if (prevCluster != newCluster) {
             prevCluster.remove(bot);
-            newCluster.add(bot);
+            newCluster.add(bot, null);
         }
     }
 
-    public void addToWorld(Bot newBot, @Deprecated Bot before) {
+    public void addToWorld(Bot newBot, Bot before) {
         // add to matrix
         matrix[newBot.x][newBot.y] = newBot;
 
         // add to cluster
-        findCluster(newBot).add(newBot);
+        findCluster(newBot).add(newBot, before);
 
         // вставляем нового бота между ботом-предком и предыдущим ботом
         // в цепочке ссылок, которая объединяет всех ботов
-        if (before != null) {
-            newBot.insertBefore(before);
-        }
     }
 
     final Cluster findCluster(Bot bot) {
@@ -110,23 +107,30 @@ public class World implements Consts {
     final void iterate2() {
         assert clusters.size() == 1;
         for (Cluster cluster : clusters) {
-            final Bot[] bots = cluster.getArray();
             final int size = cluster.size();
-            long start = System.currentTimeMillis();
+            Bot first = cluster.getStart();
+            Bot bot = first;
             int proc = 0;
-            for (int i = 0; i < size; i++) {
-                Bot bot = bots[i];
+            long start = System.currentTimeMillis();
+            for (int i = 0; bot != first || i == 0; i++) {
+                //if (i % 100 == 0) {
+                //    System.out.println("bot: " + bot + ", cluster: " + cluster.size());
+                //}
                 if (bot.alive == 3) {
                     bot.step();
                     proc++;
                 }
+                if (bot == bot.nextBot) {
+                    break;
+                }
+                bot = bot.nextBot;
             }
             final long tookSinceStart = System.currentTimeMillis() - timeStarted;
             this.botsProcessed += proc;
             double sec = tookSinceStart / 1000d;
             long speed = (long) (this.botsProcessed / sec / 1000);
             long took = System.currentTimeMillis() - start;
-            System.out.println("gen: " + generation + ", bots: " + size + ", speed: " + speed + " KB/sec");
+            //System.out.println("gen: " + generation + ", bots: " + size + ", speed: " + speed + " KB/sec");
         }
         //currentbot = clusters.get(0).bots.iterator().next();
         generation++;
@@ -153,6 +157,7 @@ public class World implements Consts {
                     lastTimePainted = now;
                 }
             }
+            System.out.println("worker thread finished");
         }
     }
 
@@ -204,8 +209,6 @@ public class World implements Consts {
     // генерируем первого бота
     public void generateAdam() {
         Bot bot = new Bot(this);
-        zerobot.prev = bot;
-        zerobot.next = bot;
 
         bot.adr = 0;            // начальный адрес генома
         bot.x = width / 2;      // координаты бота
@@ -218,13 +221,23 @@ public class World implements Consts {
         bot.c_blue = 170;
         bot.c_green = 170;
         bot.direction = 5;      // направление
-        bot.prev = zerobot;     // ссылка на предыдущего
-        bot.next = zerobot;     // ссылка на следующего
         for (int i = 0; i < 64; i++) {          // заполняем геном командой 32 - фотосинтез
             bot.mind[i] = 32;
         }
 
+        zerobot.prev = bot;
+        zerobot.next = bot;
+        bot.prev = zerobot;     // ссылка на предыдущего
+        bot.next = zerobot;     // ссылка на следующего
+
+        clusters.get(0).add(bot);
+        //zerobot.prevBot = bot;
+        //zerobot.nextBot = bot;
+        //bot.prevBot = zerobot;
+        //bot.nextBot = zerobot;
+
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу
+
         currentbot = bot;                       // устанавливаем текущим
         addToWorld(bot, null);
     }

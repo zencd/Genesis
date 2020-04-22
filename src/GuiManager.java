@@ -163,10 +163,10 @@ public class GuiManager implements Consts {
         w.organic = 0; // todo incorrect responsibility
 
         for (Cluster cluster : w.clusters) {
-            final Bot[] bots = cluster.getArray();
-            final int size = cluster.size();
-            for (int i = 0; i < size; i++) {
-                Bot bot = bots[i];
+            Bot first = cluster.getStart();
+            Bot bot = first;
+            for (int i = 0; bot != first || i == 0; i++) {
+                //System.out.println("bot: " + bot + ", first: " + first);
                 int red, green, blue;
                 if (bot.alive == 3) {                      // живой бот
                     final int viewMode = this.viewMode;
@@ -211,6 +211,10 @@ public class GuiManager implements Consts {
                     rgb[bot.y * width + bot.x] = (255 << 24) | (red << 16) | (green << 8) | blue;
                     w.organic++;
                 }
+                if (bot == bot.nextBot) {
+                    break;
+                }
+                bot = bot.nextBot;
             }
         }
 

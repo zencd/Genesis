@@ -36,6 +36,8 @@ public class Bot {
 
     final World world;
     Cluster cluster;
+    Bot nextBot;
+    Bot prevBot;
 
     int clusterPos = -1;
 
@@ -383,8 +385,11 @@ public class Bot {
         final World w = world;
         w.matrix[bot.x][bot.y] = null;   // удаление бота с карты
 
-        bot.prev.next = bot.next;            // удаление бота из цепочки
-        bot.next.prev = bot.prev;            // связывающей всех ботов
+        //bot.prev.next = bot.next;            // удаление бота из цепочки
+        //bot.next.prev = bot.prev;            // связывающей всех ботов
+
+        bot.prevBot.nextBot = bot.nextBot;            // удаление бота из цепочки
+        bot.nextBot.prevBot = bot.prevBot;            // связывающей всех ботов
 
         //bot.cluster.remove(this);
         //bot.world.findCluster(bot).remove(this);
@@ -719,6 +724,11 @@ public class Bot {
         before.prev.next = this;
         this.next = before;
         before.prev = this;
+
+        this.prevBot = before.prevBot;
+        before.prevBot.nextBot = this;
+        this.nextBot = before;
+        before.prevBot = this;
     }
 
     private int getNewColor(int parentColor) {
