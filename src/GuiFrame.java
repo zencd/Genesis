@@ -1,4 +1,6 @@
 import javax.swing.*;
+import javax.swing.border.Border;
+import javax.swing.border.CompoundBorder;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
@@ -20,9 +22,10 @@ public class GuiFrame extends JFrame implements Consts {
     };
 
     JPanel paintPanel = new JPanel(new FlowLayout());
-    JLabel generationLabel = new JLabel(" Generation: 0 ");
-    JLabel populationLabel = new JLabel(" Population: 0 ");
-    JLabel organicLabel = new JLabel(" Organic: 0 ");
+    JLabel generationLabel = new JLabel("Generation: 0");
+    JLabel populationLabel = new JLabel("Population: 0");
+    JLabel organicLabel = new JLabel("Organic: 0");
+    JLabel threadsLabel = new JLabel("Threads: 0");
 
     public static final Map<String,Integer> VIEW_MODE_MAP = new HashMap<>();
     static {
@@ -66,18 +69,26 @@ public class GuiFrame extends JFrame implements Consts {
 
         JPanel statusPanel = new JPanel(new FlowLayout());
         statusPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        statusPanel.setBorder(BorderFactory.createLoweredBevelBorder());
+        //statusPanel.setBorder(BorderFactory.createLoweredBevelBorder());
         container.add(statusPanel, BorderLayout.SOUTH);
 
-        generationLabel.setPreferredSize(new Dimension(140, 18));
-        generationLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        Border labelBorder = BorderFactory.createCompoundBorder(
+                BorderFactory.createLoweredBevelBorder(),
+                BorderFactory.createEmptyBorder(0, 4, 0, 4)
+        );
+
+        generationLabel.setPreferredSize(new Dimension(160, 18));
+        generationLabel.setBorder(labelBorder);
         statusPanel.add(generationLabel);
         populationLabel.setPreferredSize(new Dimension(140, 18));
-        populationLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        populationLabel.setBorder(labelBorder);
         statusPanel.add(populationLabel);
         organicLabel.setPreferredSize(new Dimension(140, 18));
-        organicLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        organicLabel.setBorder(labelBorder);
+        threadsLabel.setPreferredSize(new Dimension(40, 18));
         statusPanel.add(organicLabel);
+        threadsLabel.setBorder(labelBorder);
+        statusPanel.add(threadsLabel);
 
         JToolBar toolbar = new JToolBar();
         toolbar.setOrientation(SwingConstants.VERTICAL);
@@ -142,6 +153,9 @@ public class GuiFrame extends JFrame implements Consts {
         //setLocation((sSize.width - fSize.width)/2, (sSize.height - fSize.height)/2);
         //setSize(new Dimension(sSize.width, sSize.height));
         //setExtendedState(MAXIMIZED_BOTH);
+        Rectangle max = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+        setLocation(max.getLocation());
+        setSize(max.width, 600);
         this.setVisible(true);
 
         drawstepSlider.addChangeListener(e -> {

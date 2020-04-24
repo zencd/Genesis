@@ -11,4 +11,5 @@ public interface Consts {
 
     //int ALGO = 1;
     int ALGO = 2;
+    int NUM_THREADS = 1;
 }

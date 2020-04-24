@@ -1,6 +1,13 @@
+import java.util.List;
 import java.util.Random;
 
 public class Utils {
+    public static void joinSafe(List<Thread> threads) {
+        for (Thread thread : threads) {
+            joinSafe(thread);
+        }
+    }
+
     public static void joinSafe(Thread thread) {
         if (thread != null) {
             try {

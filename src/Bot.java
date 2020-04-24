@@ -1,4 +1,4 @@
-public class Bot {
+public final class Bot {
 
     private static final int LV_ORGANIC_HOLD = 1;           // органика
     private static final int LV_ALIVE = 3;                  // живой бот
@@ -35,21 +35,49 @@ public class Bot {
     Bot next;                // следующий в цепочке просчета
 
     final World world;
-    Cluster cluster;
+    private Cluster cluster;
     Bot nextBot;
     Bot prevBot;
 
     int clusterPos = -1;
 
+    @Deprecated
     Bot(World world) {
         this.world = world;
     }
 
     Bot(World world, Cluster cluster) {
         this.world = world;
-        this.cluster = cluster;
+        this.setCluster(cluster);
     }
 
+    public final Cluster getCluster() {
+        return cluster;
+    }
+
+    public final void setNextBot(Bot value) {
+        if (value != null && cluster != value.cluster) {
+            int stop = 0;
+        }
+        this.nextBot = value;
+    }
+
+    public final void setPrevBot(Bot value) {
+        if (value != null && cluster != value.cluster) {
+            int stop = 0;
+        }
+        this.prevBot = value;
+    }
+
+    public final void setCluster(Cluster cluster) {
+        if (prevBot != null && cluster != prevBot.cluster) {
+            int stop = 0;
+        }
+        if (nextBot != null && cluster != nextBot.cluster) {
+            int stop = 0;
+        }
+        this.cluster = cluster;
+    }
 
     // ====================================================================
     // =========== главная функция жизнедеятельности бота  ================
@@ -382,14 +410,33 @@ public class Bot {
     //жжжжжжжжжжжжжжжжжжжхжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж
     //=====   удаление бота        =============
     private void deleteBot(Bot bot) {
+        deleteBot(bot, false);
+    }
+
+    private void deleteBot(Bot bot, boolean eaten) {
         final World w = world;
         w.matrix[bot.x][bot.y] = null;   // удаление бота с карты
 
         //bot.prev.next = bot.next;            // удаление бота из цепочки
         //bot.next.prev = bot.prev;            // связывающей всех ботов
 
-        bot.prevBot.nextBot = bot.nextBot;            // удаление бота из цепочки
-        bot.nextBot.prevBot = bot.prevBot;            // связывающей всех ботов
+        Bot left = bot.prevBot;
+        Bot right = bot.nextBot;
+        if (left != null && right != null) {
+            if (left == null || right == null) {
+                int stop = 0;
+            }
+            if (left.cluster != bot.cluster) {
+                int stop = 0;
+            }
+            if (right.cluster != bot.cluster) {
+                int stop = 0;
+            }
+            bot.prevBot.setNextBot(right);            // удаление бота из цепочки
+            bot.nextBot.setPrevBot(left);            // связывающей всех ботов
+        }
+
+        bot.cluster.remove(this);
 
         //bot.cluster.remove(this);
         //bot.world.findCluster(bot).remove(this);
@@ -485,7 +532,7 @@ public class Bot {
         }
         // осталось 2 варианта: ограника или бот
         else if (w.matrix[xt][yt].alive == LV_ORGANIC_HOLD) {   // если там оказалась органика
-            deleteBot(w.matrix[xt][yt]);                        // то удаляем её из списков
+            deleteBot(w.matrix[xt][yt], true);                        // то удаляем её из списков
             health = health + 100;          //здоровье увеличилось на 100
             goRed(100);               // бот покраснел
             return 4;                       // возвращаем 4
@@ -511,7 +558,7 @@ public class Bot {
         //------ если здоровья в 2 раза больше, чем минералов у жертвы  ------
         //------ то здоровьем проламываем минералы ---------------------------
         if (health >= 2 * min1) {
-            deleteBot(w.matrix[xt][yt]);         // удаляем жертву из списков
+            deleteBot(w.matrix[xt][yt], true);         // удаляем жертву из списков
             int cl = 100 + (hl / 2) - 2 * min1; // вычисляем, сколько энергии смог получить бот
             health = health + cl;
             if (cl < 0)
@@ -676,7 +723,7 @@ public class Bot {
             return;
         }
 
-        Bot newbot = new Bot(w);
+        Bot newbot = new Bot(w, cluster); // todo pick right cluster, it may differ for the new pos
 
         int xt = xFromVektorR(n);       // координаты X и Y
         int yt = yFromVektorR(n);
@@ -716,7 +763,7 @@ public class Bot {
 
         //w.matrix[xt][yt] = newbot;    // отмечаем нового бота в массиве matrix
 
-        w.addToWorld(newbot, this);
+        w.addToWorld(newbot);
     }
 
     public final void insertBefore(Bot before) {
@@ -725,10 +772,10 @@ public class Bot {
         this.next = before;
         before.prev = this;
 
-        this.prevBot = before.prevBot;
-        before.prevBot.nextBot = this;
-        this.nextBot = before;
-        before.prevBot = this;
+        this.setPrevBot(before.prevBot);
+        before.prevBot.setNextBot(this);
+        this.setNextBot(before);
+        before.setPrevBot(this);
     }
 
     private int getNewColor(int parentColor) {

@@ -15,7 +15,7 @@ public class Tests {
         World world = new World(preGenRandom(), ()->200L);
         world.mapGenerationInitiated(1000,1000);
         for (int i = 0; i < 1000; i++) {
-            world.iterate2();
+            //world.iterate2();
         }
         String snapshot = takeSnapshot(world);
         System.out.println("snapshot: " + snapshot.hashCode());

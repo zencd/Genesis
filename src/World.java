@@ -15,7 +15,7 @@ public class World implements Consts {
     int[] mapInGPU;    //Карта для GPU
     Bot[][] matrix;    //Матрица мира
     @Deprecated
-    Bot zerobot = new Bot(this);
+    Bot zerobot = new Bot(this, null);
     @Deprecated
     Bot currentbot;
     int generation;
@@ -23,7 +23,7 @@ public class World implements Consts {
     int organic;
     int perlinValue = PERLIN_DEFAULT;
 
-    private Thread thread = null;
+    private List<Thread> workers = null;
     private Thread paintThread = null;
     private boolean started = false; // поток работает?
 
@@ -49,7 +49,12 @@ public class World implements Consts {
         width = canvasWidth / zoom;    // Ширина доступной части экрана для рисования карты
         height = canvasHeight / zoom;
         clusters = new ArrayList<>();
-        clusters.add(new Cluster(this));
+        if (NUM_THREADS == 1) {
+            clusters.add(new Cluster(this));
+        } else {
+            clusters.add(new Cluster(this));
+            clusters.add(new Cluster(this));
+        }
         generateMap(mapSeeder.get());
         generateAdam();
     }
@@ -65,23 +70,31 @@ public class World implements Consts {
         final Cluster newCluster = findCluster(bot);
         if (prevCluster != newCluster) {
             prevCluster.remove(bot);
-            newCluster.add(bot, null);
+            bot.setCluster(newCluster);
+            newCluster.add(bot);
         }
     }
 
-    public void addToWorld(Bot newBot, Bot before) {
+    public void addToWorld(Bot newBot) {
         // add to matrix
         matrix[newBot.x][newBot.y] = newBot;
 
         // add to cluster
-        findCluster(newBot).add(newBot, before);
+        findCluster(newBot).add(newBot);
 
         // вставляем нового бота между ботом-предком и предыдущим ботом
         // в цепочке ссылок, которая объединяет всех ботов
     }
 
     final Cluster findCluster(Bot bot) {
-        return clusters.get(0); // todo a single cluster yet
+        // todo dummy impl
+        // todo dummy impl
+        // todo dummy impl
+        if (NUM_THREADS == 1) {
+            return clusters.get(0);
+        } else {
+            return clusters.get(bot.x > width * 0.3 ? 0 : 1);
+        }
     }
 
     final void iterate1() {
@@ -105,57 +118,68 @@ public class World implements Consts {
         System.out.println("gen: " + generation + ", proc1: " + proc1 + ", proc2: " + proc2 + ", speed: " + speed + " KB/sec");
     }
 
-    final void iterate2() {
-        assert clusters.size() == 1;
-        for (Cluster cluster : clusters) {
-            final int size = cluster.size();
-            Bot first = cluster.getStart();
-            Bot bot = first;
-            int proc = 0;
-            long start = System.currentTimeMillis();
-            for (int i = 0; bot != first || i == 0; i++) {
-                //if (i % 100 == 0) {
-                //    System.out.println("bot: " + bot + ", cluster: " + cluster.size());
-                //}
-                if (bot.alive == 3) {
-                    bot.step();
-                    proc++;
-                }
-                if (bot == bot.nextBot) {
-                    break;
-                }
-                bot = bot.nextBot;
+    boolean met = false;
+
+    final void iterate2(Cluster cluster) {
+        final int size1 = cluster.size();
+        cluster.mergeBots();
+        final int size2 = cluster.size();
+        //assert clusters.size() == 2;
+        //for (Cluster cluster : clusters) {
+        int proc = 0;
+        long start = System.currentTimeMillis();
+
+        //long t1 = System.currentTimeMillis();
+        //for (Bot bot : cluster.bots()) {
+        //}
+        //long t2 = System.currentTimeMillis();
+        //System.err.println("empty loop took " + (t2-t1) + " ms for " + cluster.size() + " items");
+
+        for (Bot bot : cluster.bots()) {
+            if (!met && bot.getCluster() != cluster) {
+                System.err.println("iterate: met a bot of different cluster");
+                met = true;
+                break;
             }
-            final long tookSinceStart = System.currentTimeMillis() - timeStarted;
-            this.botsProcessed += proc;
-            double sec = tookSinceStart / 1000d;
-            long speed = (long) (this.botsProcessed / sec / 1000);
-            long took = System.currentTimeMillis() - start;
-            //System.out.println("gen: " + generation + ", bots: " + size + ", speed: " + speed + " KB/sec");
+            if (bot.alive == 3) {
+                bot.step();
+                proc++;
+            }
         }
+
+        final long tookSinceStart = System.currentTimeMillis() - timeStarted;
+        this.botsProcessed += proc;
+        double sec = tookSinceStart / 1000d;
+        long speed = (long) (this.botsProcessed / sec / 1000);
+        long took = System.currentTimeMillis() - start;
+        //System.out.println("gen: " + generation + ", bots: " + size + ", speed: " + speed + " KB/sec");
+        //}
         //currentbot = clusters.get(0).bots.iterator().next();
         generation++;
     }
 
     private class Worker extends Thread {
-        private final GuiManager gui;
+        private final Cluster cluster;
+
         //private long lastTimePainted = 0;
-        Worker(GuiManager gui) {
-            this.gui = gui;
+        Worker(Cluster cluster) {
+            this.cluster = cluster;
         }
+
         public void run() {
             while (started) {       // обновляем матрицу
                 long now = System.currentTimeMillis();
                 if (ALGO == 1) {
                     iterate1();
                 } else {
-                    iterate2();
+                    iterate2(cluster);
                 }
-                //long time2 = System.currentTimeMillis();
+                long time2 = System.currentTimeMillis();
+                System.err.println("iterated for " + (time2 - now) + ", generation: " + generation + ", cluster: " + cluster.size());
 //                System.out.println("Step execute " + ": " + (time2-time1) + "");
 //                if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
-                    //gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
-                    //lastTimePainted = now;
+                //gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
+                //lastTimePainted = now;
                 //}
             }
             //System.out.println("worker thread finished");
@@ -165,9 +189,11 @@ public class World implements Consts {
     private class PaintWorker extends Thread {
         private final GuiManager gui;
         private long lastTimePainted = 0;
+
         PaintWorker(GuiManager gui) {
             this.gui = gui;
         }
+
         public void run() {
             try {
                 while (started) {
@@ -183,20 +209,25 @@ public class World implements Consts {
     void start(GuiManager gui) {
         timeStarted = System.currentTimeMillis();
         botsProcessed = 0;
-        started	= true;         // Флаг работы потока, если false  поток заканчивает работу
+        started = true;         // Флаг работы потока, если false  поток заканчивает работу
 
-        thread = new Worker(gui); // создаем новый поток
-        thread.start();
+        List<Thread> workers = new ArrayList<>();
+        this.workers = workers;
+        for (Cluster cluster : clusters) {
+            Thread t = new Worker(cluster);
+            workers.add(t);
+            t.start();
+        }
 
-        paintThread = new PaintWorker(gui);
+        PaintWorker paintThread = new PaintWorker(gui);
+        this.paintThread = paintThread;
         paintThread.start();
     }
 
     void stop() {
         started = false;        //Выставляем влаг
-        Utils.joinSafe(thread);
+        Utils.joinSafe(workers);
         Utils.joinSafe(paintThread);
-        thread = null;
         paintThread = null;
     }
 
@@ -221,7 +252,7 @@ public class World implements Consts {
         final Perlin2D perlin = new Perlin2D(seed);
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
-                final float value = perlin.getNoise(x/f,y/f,8,0.45f);        // вычисляем точку ландшафта
+                final float value = perlin.getNoise(x / f, y / f, 8, 0.45f);        // вычисляем точку ландшафта
                 final int intValue = (int) (value * 255 + 128) & 255;
                 map[x][y] = intValue;
                 mapInGPU[y * width + x] = map[x][y];
@@ -233,7 +264,7 @@ public class World implements Consts {
 
     // генерируем первого бота
     public void generateAdam() {
-        Bot bot = new Bot(this);
+        Bot bot = new Bot(this, null);
 
         bot.adr = 0;            // начальный адрес генома
         bot.x = width / 2;      // координаты бота
@@ -255,7 +286,9 @@ public class World implements Consts {
         bot.prev = zerobot;     // ссылка на предыдущего
         bot.next = zerobot;     // ссылка на следующего
 
-        clusters.get(0).add(bot);
+        Cluster cluster = clusters.get(0);
+        bot.setCluster(cluster);
+        cluster.add(bot);
         //zerobot.prevBot = bot;
         //zerobot.nextBot = bot;
         //bot.prevBot = zerobot;
@@ -264,7 +297,7 @@ public class World implements Consts {
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу
 
         currentbot = bot;                       // устанавливаем текущим
-        addToWorld(bot, null);
+        addToWorld(bot);
     }
 
     public double rand() {
