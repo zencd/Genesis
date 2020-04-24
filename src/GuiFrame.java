@@ -156,6 +156,7 @@ public class GuiFrame extends JFrame implements Consts {
         Rectangle max = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
         setLocation(max.getLocation());
         setSize(max.width, 600);
+        setSize(800, 500);
         this.setVisible(true);
 
         drawstepSlider.addChangeListener(e -> {

@@ -66,12 +66,8 @@ public class GuiManager implements Consts {
     }
 
     public void paintWorld() {
-        if (ALGO == 1) {
-            paintWorld1();
-        } else {
-            //paintWorld2();
-            paintWorld2_MATRIX();
-        }
+        //paintWorld2();
+        paintWorld2_MATRIX();
     }
 
     private void paintWorld1() {

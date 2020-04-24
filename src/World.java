@@ -1,3 +1,4 @@
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
@@ -50,10 +51,12 @@ public class World implements Consts {
         height = canvasHeight / zoom;
         clusters = new ArrayList<>();
         if (NUM_THREADS == 1) {
-            clusters.add(new Cluster(this));
+            clusters.add(new Cluster(this, new Rectangle(0, 0, width, height)));
         } else {
-            clusters.add(new Cluster(this));
-            clusters.add(new Cluster(this));
+            final int width1 = this.width / 2;
+            final int width2 = this.width - width1;
+            clusters.add(new Cluster(this, new Rectangle(0, 0, width1, height)));
+            clusters.add(new Cluster(this, new Rectangle(width1, 0, width2, height)));
         }
         generateMap(mapSeeder.get());
         generateAdam();
@@ -87,38 +90,14 @@ public class World implements Consts {
     }
 
     final Cluster findCluster(Bot bot) {
-        // todo dummy impl
-        // todo dummy impl
-        // todo dummy impl
-        if (NUM_THREADS == 1) {
-            return clusters.get(0);
-        } else {
-            return clusters.get(bot.x > width * 0.3 ? 0 : 1);
-        }
-    }
-
-    final void iterate1() {
-        int proc1 = 0;
-        int proc2 = 0;
-        while (currentbot != zerobot) {
-            proc1++;
-            if (currentbot.alive == 3) {
-                currentbot.step();
-                proc2++;
+        // todo optimize
+        for (Cluster cluster : clusters) {
+            if (cluster.rect.contains(bot.x, bot.y)) {
+                return cluster;
             }
-            currentbot = currentbot.next;
         }
-        currentbot = currentbot.next;
-        generation++;
-
-        final long tookSinceStart = System.currentTimeMillis() - timeStarted;
-        this.botsProcessed += proc2;
-        double sec = tookSinceStart / 1000d;
-        long speed = (long) (this.botsProcessed / sec / 1000);
-        System.out.println("gen: " + generation + ", proc1: " + proc1 + ", proc2: " + proc2 + ", speed: " + speed + " KB/sec");
+        throw new RuntimeException("should not happen");
     }
-
-    boolean met = false;
 
     final void iterate2(Cluster cluster) {
         final int size1 = cluster.size();
@@ -136,11 +115,6 @@ public class World implements Consts {
         //System.err.println("empty loop took " + (t2-t1) + " ms for " + cluster.size() + " items");
 
         for (Bot bot : cluster.bots()) {
-            if (!met && bot.getCluster() != cluster) {
-                System.err.println("iterate: met a bot of different cluster");
-                met = true;
-                break;
-            }
             if (bot.alive == 3) {
                 bot.step();
                 proc++;
@@ -169,13 +143,9 @@ public class World implements Consts {
         public void run() {
             while (started) {       // обновляем матрицу
                 long now = System.currentTimeMillis();
-                if (ALGO == 1) {
-                    iterate1();
-                } else {
-                    iterate2(cluster);
-                }
+                iterate2(cluster);
                 long time2 = System.currentTimeMillis();
-                System.err.println("iterated for " + (time2 - now) + ", generation: " + generation + ", cluster: " + cluster.size());
+                //System.err.println("iterated for " + (time2 - now) + ", generation: " + generation + ", cluster: " + cluster.size());
 //                System.out.println("Step execute " + ": " + (time2-time1) + "");
 //                if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
                 //gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
