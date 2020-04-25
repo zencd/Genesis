@@ -1,5 +1,7 @@
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CyclicBarrier;
 
 public class Utils {
     public static void joinSafe(List<Thread> threads) {
@@ -28,5 +30,13 @@ public class Utils {
             buf[i] = random.nextDouble();
         }
         return buf;
+    }
+
+    public static void await(CyclicBarrier barrier) {
+        try {
+            barrier.await();
+        } catch (InterruptedException| BrokenBarrierException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
