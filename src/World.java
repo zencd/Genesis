@@ -55,17 +55,22 @@ public class World implements Consts {
         height = canvasHeight / zoom;
         clusters = new ArrayList<>();
         if (NUM_THREADS == 1) {
-            clusters.add(new Cluster(this, new Rectangle(0, 0, width, height), true));
-            barrier = new CyclicBarrier(1);
+            clusters.add(new Cluster(this, new Rectangle(0, 0, width, height), "worker-1", true));
+            barrier = null;
         } else {
             final int gap = 2;
             final int width1 = (this.width - gap) / 2;
             final int width2 = gap;
             final int width3 = this.width - width1 - gap;
-            clusters.add(new Cluster(this, new Rectangle(0, 0, width1, height), false));
-            clusters.add(new Cluster(this, new Rectangle(width1, 0, gap, height), true));
-            clusters.add(new Cluster(this, new Rectangle(width1 + gap, 0, width3, height), false));
-            barrier = new CyclicBarrier(2);
+            final Cluster leader = new Cluster(this, new Rectangle(width1, 0, gap, height), "worker-leader", true);
+            clusters.add(new Cluster(this, new Rectangle(0, 0, width1, height), "worker-1", false));
+            clusters.add(leader);
+            clusters.add(new Cluster(this, new Rectangle(width1 + gap, 0, width3, height), "worker-2", false));
+            barrier = new CyclicBarrier(2, () -> {
+                //System.err.println("=== sync ===");
+                iterate(leader);
+                //barrier.reset();
+            });
         }
         generateMap(mapSeeder.get());
         generateAdam();
@@ -99,13 +104,15 @@ public class World implements Consts {
     }
 
     final Cluster findCluster(Bot bot) {
+        final int x = bot.x;
+        final int y = bot.y;
         final Cluster cluster1 = bot.getCluster();
-        if (cluster1.rect.contains(bot.x, bot.y)) {
+        if (cluster1.rect.contains(x, y)) {
             return cluster1;
         }
         // todo optimize
         for (Cluster cluster : clusters) {
-            if (cluster.rect.contains(bot.x, bot.y)) {
+            if (cluster.rect.contains(x, y)) {
                 return cluster;
             }
         }
@@ -113,6 +120,8 @@ public class World implements Consts {
     }
 
     final void iterate(Cluster cluster) {
+        //System.err.println("" + cluster.name + " :: iterate");
+
         final int size1 = cluster.size();
         cluster.mergeBots();
         final int size2 = cluster.size();
@@ -129,9 +138,9 @@ public class World implements Consts {
 
         //System.err.println("iterate: " + cluster.leader);
 
-        if (NUM_THREADS > 1 && cluster.leader) {
-            Utils.await(barrier);
-        }
+        //if (NUM_THREADS > 1 && cluster.leader) {
+        //    Utils.await(barrier);
+        //}
 
         final Bot[][] matrix = this.matrix;
         final int endX = cluster.rect.x + cluster.rect.width;
@@ -151,8 +160,6 @@ public class World implements Consts {
 
         if (cluster.leader) {
             updateStats();
-        } else if (NUM_THREADS > 1) {
-            Utils.await(barrier);
         }
 
         //final long tookSinceStart = System.currentTimeMillis() - timeStarted;
@@ -183,6 +190,9 @@ public class World implements Consts {
         public void run() {
             while (started) {
                 iterate(cluster);
+                if (NUM_THREADS > 1) {
+                    Utils.await(barrier);
+                }
             }
         }
     }
@@ -215,9 +225,11 @@ public class World implements Consts {
         List<Thread> workers = new ArrayList<>();
         this.workers = workers;
         for (Cluster cluster : clusters) {
-            Thread t = new Worker(cluster);
-            workers.add(t);
-            t.start();
+            if (!cluster.leader || NUM_THREADS == 1) {
+                Thread t = new Worker(cluster);
+                workers.add(t);
+                t.start();
+            }
         }
 
         PaintWorker paintThread = new PaintWorker(gui);

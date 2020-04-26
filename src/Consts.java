@@ -10,4 +10,5 @@ public interface Consts {
     int SEA_LEVEL_DEFAULT = 145;
 
     int NUM_THREADS = 1;
+    //int NUM_THREADS = 2;
 }

@@ -15,10 +15,12 @@ public class Cluster {
     private int size = 0;
     public final Rectangle rect;
     public final boolean leader;
+    final String name;
 
-    Cluster(World world, Rectangle rect, boolean leader) {
+    Cluster(World world, Rectangle rect, String name, boolean leader) {
         this.world = world;
         this.rect = rect;
+        this.name = name;
         this.leader = leader;
         //Bot start = new Bot(world, this);
         //add(start);
