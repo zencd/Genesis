@@ -1,6 +1,7 @@
 import java.awt.*;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Random;
 import java.util.Set;
 
 public class Cluster {
@@ -17,6 +18,9 @@ public class Cluster {
     public final boolean leader;
     final String name;
 
+    private final double[] randMemory = Utils.makePreCalcRandom(new Random(1000 + idCounter));
+    private int randIdx = 0;
+
     Cluster(World world, Rectangle rect, String name, boolean leader) {
         this.world = world;
         this.rect = rect;
@@ -27,23 +31,23 @@ public class Cluster {
     }
 
     void add(Bot bot) {
-        //newBots.add(bot);
+        newBots.add(bot);
         //world.matrix[bot.x][bot.y] = bot;
         size++;
     }
 
     public void remove(Bot bot) {
-        //removedBots.add(bot);
+        removedBots.add(bot);
         world.matrix[bot.x][bot.y] = null;
         size--;
     }
 
     void mergeBots() {
-        //allBots.removeAll(removedBots);
-        //newBots.removeAll(removedBots);
-        //allBots.addAll(newBots);
-        //newBots.clear();
-        //removedBots.clear();
+        allBots.removeAll(removedBots);
+        newBots.removeAll(removedBots);
+        allBots.addAll(newBots);
+        newBots.clear();
+        removedBots.clear();
     }
 
     public int size() {
@@ -53,8 +57,8 @@ public class Cluster {
 
     @Deprecated
     Iterable<Bot> bots() {
-        //return allBots;
-        return new BotIterable();
+        return allBots;
+        //return new BotIterable();
     }
 
     private class BotIterable implements Iterable<Bot> {
@@ -96,5 +100,15 @@ public class Cluster {
         public Bot next() {
             return null;
         }
+    }
+
+    public double rand() {
+        // todo maybe not MT ready
+        int i = this.randIdx + 1;
+        if (i >= randMemory.length) {
+            i = 0;
+        }
+        this.randIdx = i;
+        return randMemory[i];
     }
 }

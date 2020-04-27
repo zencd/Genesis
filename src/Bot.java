@@ -4,15 +4,6 @@ public final class Bot {
     private static final int LV_ALIVE = 3;                  // живой бот
     private static final int MIND_SIZE = 64;                // объем памяти генома
 
-    private static double[] randMemory = new double[1000000];   // массив предгенерированных случайных чисел
-    private static int randIdx = 0;                             // указатель текущего случайного числа
-    static {                                                    // предгенерация массива случайных чисел
-        for (int i = 0; i < randMemory.length; i++) {
-            randMemory[i] = Math.random();
-        }
-    }
-
-
     byte[] mind = new byte[MIND_SIZE];               // геном бота
 
     int adr;                 // указатель текущей команды
@@ -1017,7 +1008,7 @@ public final class Bot {
         return rand() < chance;
     }
 
-    private double rand() {
-        return world.rand();
+    public double rand() {
+        return cluster.rand();
     }
 }

@@ -59,7 +59,7 @@ public class World implements Consts {
             clusters.add(new Cluster(this, new Rectangle(0, 0, width, height), "worker-1", true));
             barrier = null;
         } else {
-            final int gap = 2;
+            final int gap = 10;
             final int width1 = (this.width - gap) / 2;
             final int width2 = gap;
             final int width3 = this.width - width1 - gap;
@@ -124,7 +124,11 @@ public class World implements Consts {
         //System.err.println("" + cluster.name + " :: iterate");
 
         final int size1 = cluster.size();
-        cluster.mergeBots();
+        //if (cluster.leader) {
+        //    for (Cluster aCluster : clusters) {
+        //        aCluster.mergeBots();
+        //    }
+        //}
         final int size2 = cluster.size();
         //assert clusters.size() == 2;
         //for (Cluster cluster : clusters) {
@@ -155,6 +159,13 @@ public class World implements Consts {
                 }
             }
         }
+
+        //for (Bot bot : cluster.bots()) {
+        //    if (bot != null && bot.alive == 3) {
+        //        bot.step();
+        //        proc++;
+        //    }
+        //}
 
         cluster.botsProcessed += proc;
         cluster.generation++;
@@ -189,7 +200,7 @@ public class World implements Consts {
         //private long lastTimePainted = 0;
         Worker(Cluster cluster) {
             this.cluster = cluster;
-            setName("worker-thread-" + cluster.id);
+            setName("thr-" + cluster.name);
         }
 
         public void run() {
@@ -203,6 +214,7 @@ public class World implements Consts {
     }
 
     private class PaintWorker extends Thread {
+        // todo move to GuiManager
         private final GuiManager gui;
         private long lastTimePainted = 0;
 
@@ -320,6 +332,7 @@ public class World implements Consts {
         addToWorld(bot);
     }
 
+    @Deprecated
     public double rand() {
         // todo maybe not MT ready
         int i = this.randIdx + 1;
