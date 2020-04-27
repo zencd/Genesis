@@ -136,9 +136,10 @@ public class GuiManager implements Consts {
 
         g.drawImage(image, 0, 0, null);
 
-        frame.generationLabel.setText(" Generation: " + w.generation);
-        frame.populationLabel.setText(" Population: " + w.population);
-        frame.organicLabel.setText(" Organic: " + w.organic);
+        frame.generationLabel.setText("Generation: " + w.generation);
+        frame.populationLabel.setText("Population: " + w.population);
+        frame.organicLabel.setText("Organic: " + w.organic);
+        frame.speedLabel.setText("Gen/sec: " + w.genPerSec);
 
         frame.buffer = buf;
         frame.canvas.repaint();
@@ -299,6 +300,7 @@ public class GuiManager implements Consts {
         frame.generationLabel.setText(" Generation: " + w.generation);
         frame.populationLabel.setText(" Population: " + w.population);
         frame.organicLabel.setText(" Organic: " + w.organic);
+        frame.speedLabel.setText("Gen/sec: " + w.genPerSec);
 
         frame.buffer = buf;
         frame.canvas.repaint();

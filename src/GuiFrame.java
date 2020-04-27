@@ -1,6 +1,5 @@
 import javax.swing.*;
 import javax.swing.border.Border;
-import javax.swing.border.CompoundBorder;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
@@ -25,7 +24,7 @@ public class GuiFrame extends JFrame implements Consts {
     JLabel generationLabel = new JLabel("Generation: 0");
     JLabel populationLabel = new JLabel("Population: 0");
     JLabel organicLabel = new JLabel("Organic: 0");
-    JLabel threadsLabel = new JLabel("Threads: 0");
+    JLabel speedLabel = new JLabel("Gen/sec: 0");
 
     public static final Map<String,Integer> VIEW_MODE_MAP = new HashMap<>();
     static {
@@ -85,10 +84,10 @@ public class GuiFrame extends JFrame implements Consts {
         statusPanel.add(populationLabel);
         organicLabel.setPreferredSize(new Dimension(140, 18));
         organicLabel.setBorder(labelBorder);
-        threadsLabel.setPreferredSize(new Dimension(40, 18));
+        speedLabel.setPreferredSize(new Dimension(140, 18));
         statusPanel.add(organicLabel);
-        threadsLabel.setBorder(labelBorder);
-        statusPanel.add(threadsLabel);
+        speedLabel.setBorder(labelBorder);
+        statusPanel.add(speedLabel);
 
         JToolBar toolbar = new JToolBar();
         toolbar.setOrientation(SwingConstants.VERTICAL);

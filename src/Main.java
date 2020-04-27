@@ -13,7 +13,7 @@ public class Main implements GuiManager.Callback, Consts {
 
     public Main() {
         double[] randArray = Utils.makePreCalcRandom();
-        world = new World(randArray, ()->new Random().nextLong());
+        world = new World(randArray, ()->112L);
         gui = new GuiManager(world, this);
         gui.init();
     }

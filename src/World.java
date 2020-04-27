@@ -22,6 +22,7 @@ public class World implements Consts {
     @Deprecated
     Bot currentbot;
     int generation;
+    long genPerSec;
     int population;
     int organic;
     int perlinValue = PERLIN_DEFAULT;
@@ -176,6 +177,10 @@ public class World implements Consts {
             botsProcessed += cluster.botsProcessed;
         }
         generation++;
+        double secs = (System.currentTimeMillis() - timeStarted) / 1000d;
+        if (secs > 3 && genPerSec == 0) {
+            genPerSec = (long) (generation / secs);
+        }
     }
 
     private class Worker extends Thread {
@@ -218,6 +223,8 @@ public class World implements Consts {
     }
 
     void start(GuiManager gui) {
+        generation = 0;
+        genPerSec = 0;
         timeStarted = System.currentTimeMillis();
         botsProcessed = 0;
         started = true;         // Флаг работы потока, если false  поток заканчивает работу
@@ -256,7 +263,7 @@ public class World implements Consts {
 
     // генерируем карту
     public void generateMap(long seed) {
-        generation = 0; // todo responsibility
+        //generation = 0; // todo responsibility
         int[][] map = new int[width][height];
         this.matrix = new Bot[width][height]; // todo responsibility
         final int[] mapInGPU = new int[width * height];
