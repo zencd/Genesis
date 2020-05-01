@@ -1,4 +1,4 @@
-public class Bot {
+public final class Bot {
 
     private static final int LV_ORGANIC_HOLD = 1;           // органика
     private static final int LV_ALIVE = 3;                  // живой бот
@@ -33,9 +33,11 @@ public class Bot {
     Bot next;                // следующий в цепочке просчета
 
     final World world;
+    final Cluster cluster;
 
-    Bot(World world) {
+    Bot(World world, Cluster cluster) {
         this.world = world;
+        this.cluster = cluster;
     }
 
 
@@ -649,17 +651,18 @@ public class Bot {
         health = health - 150;          // бот затрачивает 150 единиц энергии на создание копии
         if (health <= 0) return;        // если у него было меньше 150, то пора помирать
 
-        int n = findEmptyDirection();   // проверим, окружен ли бот
+        final int n = findEmptyDirection();   // проверим, окружен ли бот
         if (n == 8) {                   // если бот окружен, то он в муках погибает
             health = 0;
 //            bot.health += 500;
             return;
         }
 
-        Bot newbot = new Bot(world);
+        final int xt = xFromVektorR(n);       // координаты X и Y
+        final int yt = yFromVektorR(n);
 
-        int xt = xFromVektorR(n);       // координаты X и Y
-        int yt = yFromVektorR(n);
+        final Cluster newCluster = w.findCluster(xt, yt);
+        final Bot newbot = new Bot(w, newCluster);
 
         System.arraycopy(mind, 0, newbot.mind, 0, MIND_SIZE);
 

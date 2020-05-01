@@ -5,7 +5,7 @@ import java.awt.image.DataBufferInt;
 /**
  * Отвечает за все аспекты визуализации через GUI.
  */
-public class GuiManager implements Consts {
+public final class GuiManager implements Consts {
     public final GuiFrame frame;
     private final World world;
     int viewMode = VIEW_MODE_BASE;

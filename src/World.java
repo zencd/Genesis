@@ -1,9 +1,12 @@
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
  * Движок симуляции.
  */
-public class World implements Consts {
+public final class World implements Consts {
 
     int width;
     int height;
@@ -12,12 +15,14 @@ public class World implements Consts {
     int[][] map;    //Карта мира
     int[] mapInGPU;    //Карта для GPU
     Bot[][] matrix;    //Матрица мира
-    Bot zerobot = new Bot(this);
+    Bot zerobot = makeZeroBot(this);
     Bot currentbot;
     int generation;
     int population;
     int organic;
     int perlinValue = PERLIN_DEFAULT;
+
+    private List<Cluster> clusters;
 
     private Thread thread = null;
     private boolean started = false; // поток работает?
@@ -31,6 +36,12 @@ public class World implements Consts {
         this.mapSeeder = mapSeeder;
     }
 
+    @Deprecated
+    static Bot makeZeroBot(World world) {
+        // todo the zero bot should be eliminated
+        return new Bot(world, null);
+    }
+
     public boolean isStarted() {
         return started;
     }
@@ -38,8 +49,20 @@ public class World implements Consts {
     public void mapGenerationInitiated(int canvasWidth, int canvasHeight) {
         width = canvasWidth / zoom;    // Ширина доступной части экрана для рисования карты
         height = canvasHeight / zoom;
+        initClusters();
         generateMap(mapSeeder.get());
         generateAdam();
+    }
+
+    private void initClusters() {
+        final List<Cluster> clusters = new ArrayList<>();
+        final int width1 = width / 2;
+        final int width2 = width - width1;
+        Cluster cluster1 = new Cluster(this, new Rectangle(0, 0, width1, height), false);
+        Cluster cluster2 = new Cluster(this, new Rectangle(width1, 0, width2, height), true);
+        clusters.add(cluster1);
+        clusters.add(cluster2);
+        this.clusters = clusters;
     }
 
     private class Worker extends Thread {
@@ -121,13 +144,16 @@ public class World implements Consts {
 
     // генерируем первого бота
     public void generateAdam() {
-        Bot bot = new Bot(this);
+        final int x = width / 2;
+        final int y = height / 2;
+
+        final Bot bot = new Bot(this, findCluster(x, y));
         zerobot.prev = bot;
         zerobot.next = bot;
 
         bot.adr = 0;            // начальный адрес генома
-        bot.x = width / 2;      // координаты бота
-        bot.y = height / 2;
+        bot.x = x;      // координаты бота
+        bot.y = y;
         bot.health = 990;       // энергия
         bot.mineral = 0;        // минералы
         bot.alive = 3;          // бот живой
@@ -154,5 +180,14 @@ public class World implements Consts {
         }
         this.randIdx = i;
         return randMemory[i];
+    }
+
+    Cluster findCluster(int x, int y) {
+        for (Cluster cluster : clusters) {
+            if (cluster.rect.contains(x, y)) {
+                return cluster;
+            }
+        }
+        throw new RuntimeException("not found cluster for " + x + ", " + y);
     }
 }
