@@ -68,12 +68,15 @@ public final class World implements Consts {
         final List<Cluster> leaders = new ArrayList<>();
         final int thr = 2;
         final int gap = 5;
-        final int width1 = width / 2;
-        final int width2 = width - width1;
+        final int width1 = (width - (thr-1)*gap) / thr;
+        final int width2 = gap;
+        final int width3 = width - width1 - width2;
         Cluster cluster1 = new Cluster(this, new Rectangle(0, 0, width1, height), false);
         Cluster cluster2 = new Cluster(this, new Rectangle(width1, 0, width2, height), true);
+        Cluster cluster3 = new Cluster(this, new Rectangle(width1+gap, 0, width3, height), false);
         allClusters.add(cluster1);
         allClusters.add(cluster2);
+        allClusters.add(cluster3);
 
         leaders.add(cluster2);
 
