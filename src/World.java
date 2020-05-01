@@ -1,6 +1,8 @@
 import java.awt.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CyclicBarrier;
 import java.util.function.Supplier;
 
@@ -8,6 +10,8 @@ import java.util.function.Supplier;
  * Движок симуляции.
  */
 public final class World implements Consts {
+
+    private static final int CLUSTER_GRAN = 50;
 
     int width;
     int height;
@@ -24,8 +28,9 @@ public final class World implements Consts {
     int perlinValue = PERLIN_DEFAULT;
     private long lastTimePainted = 0;
 
-    private List<Cluster> clusters;
-    private Cluster leader;
+    private List<Cluster> allClusters;
+    private Map<Integer,List<Cluster>> clusterByX;
+    private List<Cluster> leaders;
 
     private List<Thread> workers = null;
     private CyclicBarrier barrier;
@@ -59,15 +64,36 @@ public final class World implements Consts {
     }
 
     private void initClusters() {
-        final List<Cluster> clusters = new ArrayList<>();
+        final List<Cluster> allClusters = new ArrayList<>();
+        final List<Cluster> leaders = new ArrayList<>();
+        final int thr = 2;
+        final int gap = 5;
         final int width1 = width / 2;
         final int width2 = width - width1;
         Cluster cluster1 = new Cluster(this, new Rectangle(0, 0, width1, height), false);
         Cluster cluster2 = new Cluster(this, new Rectangle(width1, 0, width2, height), true);
-        clusters.add(cluster1);
-        clusters.add(cluster2);
-        this.clusters = clusters;
-        this.leader = cluster2;
+        allClusters.add(cluster1);
+        allClusters.add(cluster2);
+
+        leaders.add(cluster2);
+
+        this.clusterByX = makeClusterByX(allClusters);
+        this.allClusters = allClusters;
+        this.leaders = leaders;
+    }
+
+    private Map<Integer,List<Cluster>> makeClusterByX(List<Cluster> allClusters) {
+        Map<Integer,List<Cluster>> clusterByX = new HashMap<>();
+        for (int i = 0; i <= width; i++) {
+            for (Cluster aCluster : allClusters) {
+                final int x = i * CLUSTER_GRAN;
+                if (aCluster.rect.contains(x, 0)) {
+                    List<Cluster> cc = clusterByX.computeIfAbsent(i, k -> new ArrayList<>(1));
+                    cc.add(aCluster);
+                }
+            }
+        }
+        return clusterByX;
     }
 
     private class Worker extends Thread {
@@ -124,11 +150,13 @@ public final class World implements Consts {
 
     void start(GuiManager gui) {
         started	= true;
-        barrier = new CyclicBarrier(clusters.size() - 1, () -> {
-            iterateCluster(leader, gui);
+        barrier = new CyclicBarrier(allClusters.size() - 1, () -> {
+            for (Cluster aLeader : leaders) {
+                iterateCluster(aLeader, gui);
+            }
         });
         List<Thread> workers = new ArrayList<>();
-        for (Cluster cluster : clusters) {
+        for (Cluster cluster : allClusters) {
             if (!cluster.leader) {
                 Worker thread = new Worker(gui, cluster);
                 workers.add(thread);
@@ -218,7 +246,7 @@ public final class World implements Consts {
     }
 
     Cluster findCluster(int x, int y) {
-        for (Cluster cluster : clusters) {
+        for (Cluster cluster : allClusters) {
             if (cluster.rect.contains(x, y)) {
                 return cluster;
             }
