@@ -11,4 +11,5 @@ public interface Consts {
 
     //int TRAVERSE_MODE = 0;
     int TRAVERSE_MODE = 1;
+    int NUM_THREADS = Runtime.getRuntime().availableProcessors();
 }

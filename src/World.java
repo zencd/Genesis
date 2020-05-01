@@ -31,6 +31,7 @@ public final class World implements Consts {
     private List<Cluster> allClusters;
     private Map<Integer,List<Cluster>> clusterByX;
     private List<Cluster> leaders;
+    private int numThreads = NUM_THREADS;
 
     private List<Thread> workers = null;
     private CyclicBarrier barrier;
@@ -66,19 +67,33 @@ public final class World implements Consts {
     private void initClusters() {
         final List<Cluster> allClusters = new ArrayList<>();
         final List<Cluster> leaders = new ArrayList<>();
-        final int thr = 2;
         final int gap = 5;
-        final int width1 = (width - (thr-1)*gap) / thr;
-        final int width2 = gap;
-        final int width3 = width - width1 - width2;
-        Cluster cluster1 = new Cluster(this, new Rectangle(0, 0, width1, height), false);
-        Cluster cluster2 = new Cluster(this, new Rectangle(width1, 0, width2, height), true);
-        Cluster cluster3 = new Cluster(this, new Rectangle(width1+gap, 0, width3, height), false);
-        allClusters.add(cluster1);
-        allClusters.add(cluster2);
-        allClusters.add(cluster3);
+        final int baseWidth = (width - (numThreads-1)*gap) / numThreads;
 
-        leaders.add(cluster2);
+        for (int x = 0, thr = 0; x < width; thr++) {
+            if (x > 0) {
+                final int aWidth = gap;
+                Cluster cluster = new Cluster(this, new Rectangle(x, 0, aWidth, height), true);
+                leaders.add(cluster);
+                allClusters.add(cluster);
+                x += aWidth;
+            }
+            {
+                int aWidth = baseWidth;
+                if (thr == numThreads - 1) {
+                    aWidth = this.width - x;
+                }
+                Cluster cluster = new Cluster(this, new Rectangle(x, 0, aWidth, height), false);
+                allClusters.add(cluster);
+                x += aWidth;
+            }
+        }
+
+        for (Cluster cluster : allClusters) {
+            System.err.println("* " + cluster);
+        }
+        System.err.println("threads: " + numThreads);
+        System.err.println("width: " + width);
 
         this.clusterByX = makeClusterByX(allClusters);
         this.allClusters = allClusters;
@@ -120,7 +135,7 @@ public final class World implements Consts {
 
     private void iterateCluster(Cluster cluster, GuiManager gui) {
         final long now = System.currentTimeMillis();
-        System.err.println("iterate " + cluster + " / " + Thread.currentThread().getId());
+        //System.err.println("iterate " + cluster + " / " + Thread.currentThread().getId());
         final int maxX = cluster.rect.x + cluster.rect.width;
         for (int x = cluster.rect.x; x < maxX; x++) {
             final int maxY = cluster.rect.y + cluster.rect.height;
@@ -153,7 +168,7 @@ public final class World implements Consts {
 
     void start(GuiManager gui) {
         started	= true;
-        barrier = new CyclicBarrier(allClusters.size() - 1, () -> {
+        barrier = new CyclicBarrier(NUM_THREADS, () -> {
             for (Cluster aLeader : leaders) {
                 iterateCluster(aLeader, gui);
             }
