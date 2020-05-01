@@ -56,12 +56,13 @@ public class GuiFrame extends JFrame implements Consts {
 
     public void init() {
         setTitle("Genesis 1.2.0");
-        setSize(new Dimension(1800, 900));
+        //setSize(new Dimension(1800, 900));
+        setSize(new Dimension(600, 500));
         Dimension sSize = Toolkit.getDefaultToolkit().getScreenSize(), fSize = getSize();
         if (fSize.height > sSize.height) fSize.height = sSize.height;
         if (fSize.width  > sSize.width) fSize.width = sSize.width;
         //setLocation((sSize.width - fSize.width)/2, (sSize.height - fSize.height)/2);
-        setSize(new Dimension(sSize.width, sSize.height));
+        //setSize(new Dimension(sSize.width, sSize.height));
 
         setDefaultCloseOperation (WindowConstants.EXIT_ON_CLOSE);
         Container container = getContentPane();
@@ -140,9 +141,9 @@ public class GuiFrame extends JFrame implements Consts {
             toolbar.add(radioButton);
         }
 
-        this.pack();
+        //this.pack();
         this.setVisible(true);
-        setExtendedState(MAXIMIZED_BOTH);
+        //setExtendedState(MAXIMIZED_BOTH);
 
         drawstepSlider.addChangeListener(e -> {
             int ds = drawstepSlider.getValue();

@@ -12,8 +12,8 @@ public class Main implements GuiManager.Callback, Consts {
     private boolean paintThreadActive = false;
 
     public Main() {
-        double[] randArray = Utils.makePreCalcRandom();
-        world = new World(randArray, ()->new Random().nextLong());
+        double[] randArray = Utils.makePreCalcRandom(new Random(1000L));
+        world = new World(randArray, ()->new Random(111L).nextLong());
         gui = new GuiManager(world, this);
         gui.init();
     }

@@ -51,20 +51,27 @@ public class World implements Consts {
         public void run() {
             while (started) {       // обновляем матрицу
                 long now = System.currentTimeMillis();
-                while (currentbot != zerobot) {
-                    if (currentbot.alive == 3) currentbot.step();
+                if (TRAVERSE_MODE == 0) {
+                    while (currentbot != zerobot) {
+                        if (currentbot.alive == 3) currentbot.step();
+                        currentbot = currentbot.next;
+                    }
                     currentbot = currentbot.next;
+                } else {
+                    for (int x = 0; x < width; x++) {
+                        for (int y = 0; y < height; y++) {
+                            Bot bot = World.this.matrix[x][y];
+                            if (bot != null && bot.alive == 3) {
+                                bot.step();
+                            }
+                        }
+                    }
                 }
-                currentbot = currentbot.next;
                 generation++;
-                //long time2 = System.currentTimeMillis();
-//                System.out.println("Step execute " + ": " + (time2-time1) + "");
                 if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
                     gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
                     lastTimePainted = now;
                 }
-                //long time3 = System.currentTimeMillis();
-//                System.out.println("Paint: " + (time3-time2));
             }
         }
     }
