@@ -1,6 +1,7 @@
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CyclicBarrier;
 import java.util.function.Supplier;
 
 /**
@@ -21,11 +22,14 @@ public final class World implements Consts {
     int population;
     int organic;
     int perlinValue = PERLIN_DEFAULT;
+    private long lastTimePainted = 0;
 
     private List<Cluster> clusters;
+    private Cluster leader;
 
-    private Thread thread = null;
-    private boolean started = false; // поток работает?
+    private List<Thread> workers = null;
+    private CyclicBarrier barrier;
+    private boolean started = false; // Флаг работы потока, если false  поток заканчивает работу
 
     private final Supplier<Long> mapSeeder; // возвращает seed только для построения карты
     private final double[] randMemory; // массив предгенерированных случайных чисел
@@ -63,52 +67,83 @@ public final class World implements Consts {
         clusters.add(cluster1);
         clusters.add(cluster2);
         this.clusters = clusters;
+        this.leader = cluster2;
     }
 
     private class Worker extends Thread {
         private final GuiManager gui;
-        private long lastTimePainted = 0;
-        Worker(GuiManager gui) {
+        private final Cluster cluster;
+        Worker(GuiManager gui, Cluster cluster) {
             this.gui = gui;
+            this.cluster = cluster;
+            setName("cluster-" + cluster.id + (cluster.leader ? "-leader" : ""));
         }
         public void run() {
             while (started) {       // обновляем матрицу
-                long now = System.currentTimeMillis();
                 if (TRAVERSE_MODE == 0) {
-                    while (currentbot != zerobot) {
-                        if (currentbot.alive == 3) currentbot.step();
-                        currentbot = currentbot.next;
-                    }
-                    currentbot = currentbot.next;
+                    iterateLinked();
                 } else {
-                    for (int x = 0; x < width; x++) {
-                        for (int y = 0; y < height; y++) {
-                            Bot bot = World.this.matrix[x][y];
-                            if (bot != null && bot.alive == 3) {
-                                bot.step();
-                            }
-                        }
-                    }
-                }
-                generation++;
-                if (generation % gui.drawstep == 0 && (now-lastTimePainted) > 15) {             // отрисовка на экран через каждые ... шагов
-                    gui.paintWorld();                           // отображаем текущее состояние симуляции на экран
-                    lastTimePainted = now;
+                    iterateCluster(cluster, gui);
                 }
             }
         }
     }
 
+    private void iterateCluster(Cluster cluster, GuiManager gui) {
+        final long now = System.currentTimeMillis();
+        System.err.println("iterate " + cluster + " / " + Thread.currentThread().getId());
+        final int maxX = cluster.rect.x + cluster.rect.width;
+        for (int x = cluster.rect.x; x < maxX; x++) {
+            final int maxY = cluster.rect.y + cluster.rect.height;
+            for (int y = cluster.rect.y; y < maxY; y++) {
+                final Bot bot = matrix[x][y];
+                if (bot != null && bot.alive == 3) {
+                    bot.step();
+                }
+            }
+        }
+        if (!cluster.leader) {
+            Utils.await(barrier);
+        }
+        if (cluster.leader) {
+            generation++;
+            if (generation % gui.drawstep == 0 && (now - lastTimePainted) > 15) {
+                gui.paintWorld();
+                lastTimePainted = now;
+            }
+        }
+    }
+
+    private void iterateLinked() {
+        while (currentbot != zerobot) {
+            if (currentbot.alive == 3) currentbot.step();
+            currentbot = currentbot.next;
+        }
+        currentbot = currentbot.next;
+    }
+
     void start(GuiManager gui) {
-        thread = new Worker(gui); // создаем новый поток
-        started	= true;         // Флаг работы потока, если false  поток заканчивает работу
-        thread.start();
+        started	= true;
+        barrier = new CyclicBarrier(clusters.size() - 1, () -> {
+            iterateCluster(leader, gui);
+        });
+        List<Thread> workers = new ArrayList<>();
+        for (Cluster cluster : clusters) {
+            if (!cluster.leader) {
+                Worker thread = new Worker(gui, cluster);
+                workers.add(thread);
+                thread.start();
+            }
+        }
+        this.workers = workers;
     }
 
     void stop() {
         started = false;        //Выставляем влаг
-        Utils.joinSafe(thread);
-        thread = null;
+        for (Thread worker : workers) {
+            Utils.joinSafe(worker);
+        }
+        workers = null;
     }
 
     // делаем паузу
