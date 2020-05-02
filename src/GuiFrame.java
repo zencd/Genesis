@@ -150,7 +150,7 @@ public final class GuiFrame extends JFrame implements Consts {
         }
 
         //setSize(new Dimension(1800, 900));
-        //setSize(new Dimension(600, 500));
+        setSize(new Dimension(600, 500));
         Dimension sSize = Toolkit.getDefaultToolkit().getScreenSize();
         Dimension fSize = getSize();
         if (fSize.height > sSize.height) fSize.height = sSize.height;
@@ -158,7 +158,7 @@ public final class GuiFrame extends JFrame implements Consts {
         //setLocation((sSize.width - fSize.width)/2, (sSize.height - fSize.height)/2);
         //setSize(new Dimension(sSize.width, sSize.height));
         //this.pack();
-        setExtendedState(MAXIMIZED_BOTH);
+        //setExtendedState(MAXIMIZED_BOTH);
         this.setVisible(true);
 
         initListeners(radioButtons);

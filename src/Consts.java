@@ -13,13 +13,13 @@ public interface Consts {
     int PERLIN_DEFAULT = 300;
     int SEA_LEVEL_DEFAULT = 145;
 
-    int NUM_WORKERS = 1;
-    //int NUM_WORKERS = Runtime.getRuntime().availableProcessors();
+    //int NUM_WORKERS = 1;
+    int NUM_WORKERS = Runtime.getRuntime().availableProcessors();
     //int NUM_WORKERS = Runtime.getRuntime().availableProcessors() * 2;
     //int NUM_WORKERS = 24;
 
     int NUM_PROCESSORS = Runtime.getRuntime().availableProcessors();
 
-    //boolean PREDICTABLE_RANDOM = true;
-    boolean PREDICTABLE_RANDOM = false;
+    boolean PREDICTABLE_RANDOM = true;
+    //boolean PREDICTABLE_RANDOM = false;
 }

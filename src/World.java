@@ -28,7 +28,8 @@ public final class World implements Consts {
     private List<Cluster> leaders;
     int numThreads = NUM_WORKERS;
 
-    long lastTimePainted = 0;
+    private long lastTimePainted = 0;
+    private long timeStarted = 0;
 
     private List<Thread> workers = null;
     private CyclicBarrier barrier;
@@ -145,6 +146,7 @@ public final class World implements Consts {
 
     void start(GuiManager gui) {
         waitForClusters();
+        timeStarted = System.currentTimeMillis();
         started	= true;
         if (numThreads > 1) {
             barrier = new CyclicBarrier(numThreads, () -> {
@@ -208,18 +210,27 @@ public final class World implements Consts {
         }
         if (cluster.superLeader) {
             generation++;
+            if (generation == 10_000) {
+                final long now = System.currentTimeMillis();
+                final long speed = (long)((double) generation / ((now - timeStarted) / 1000d));
+                System.err.println("Speed: " + speed + " gen/sec");
+            }
         }
     }
 
     private void iterateLinked(GuiManager gui) {
         //System.err.println("iterateLinked");
-        final long now = System.currentTimeMillis();
         while (currentbot != zerobot) {
             if (currentbot.alive == Bot.STATE_ALIVE) currentbot.step();
             currentbot = currentbot.next;
         }
         currentbot = currentbot.next;
         generation++;
+        final long now = System.currentTimeMillis();
+        if (generation == 10_000) {
+            final long speed = (long)((double) generation / ((now - timeStarted) / 1000d));
+            System.err.println("Speed: " + speed + " gen/sec");
+        }
         if ((now - lastTimePainted) > 15) {
             gui.paintBots();
             lastTimePainted = now;
