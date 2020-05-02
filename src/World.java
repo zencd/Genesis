@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 /**
@@ -185,6 +186,7 @@ public final class World implements Consts {
     }
 
     void start(GuiManager gui) {
+        waitForClusters();
         started	= true;
         if (numThreads > 1) {
             barrier = new CyclicBarrier(numThreads, () -> {
@@ -210,6 +212,17 @@ public final class World implements Consts {
             Utils.joinSafe(worker);
         }
         workers = null;
+    }
+
+    private void waitForClusters() {
+        while (!isClustersReady()) {
+            System.err.println("clusters not ready yet - sleeping some");
+            Utils.sleep(TimeUnit.MILLISECONDS, 50);
+        }
+    }
+
+    private boolean isClustersReady() {
+        return allClusters.stream().allMatch(cluster -> cluster.ready);
     }
 
     // делаем паузу

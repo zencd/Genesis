@@ -1,6 +1,7 @@
 import java.util.Random;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 
 public final class Utils {
     public static void await(CyclicBarrier barrier) {
@@ -18,6 +19,14 @@ public final class Utils {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public static void sleep(TimeUnit timeUnit, long amount) {
+        try {
+            timeUnit.sleep(amount);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
 

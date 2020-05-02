@@ -6,15 +6,16 @@ public final class Cluster {
     public final World world;
     public final Rectangle rect;
     public final boolean leader;
+    public volatile boolean ready = false;
 
-    private final double[] randMemory; // массив предгенерированных случайных чисел
+    private double[] randMemory; // массив предгенерированных случайных чисел
     private int randIdx = 0;
 
     public Cluster(World world, Rectangle rect, boolean leader) {
         this.world = world;
         this.rect = rect;
         this.leader = leader;
-        this.randMemory = Utils.makePreCalcRandom();
+        initRandAsync();
     }
 
     public double rand() {
@@ -24,6 +25,14 @@ public final class Cluster {
         }
         this.randIdx = i;
         return randMemory[i];
+    }
+
+    private void initRandAsync() {
+        assert this.randMemory == null;
+        new Thread(() -> {
+            this.randMemory = Utils.makePreCalcRandom();
+            this.ready = true;
+        }).start();
     }
 
     @Override
