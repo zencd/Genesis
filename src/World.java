@@ -1,8 +1,6 @@
 import java.awt.*;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -11,8 +9,6 @@ import java.util.function.Supplier;
  * Движок симуляции.
  */
 public final class World implements Consts {
-
-    private static final int CLUSTER_GRAN = 50;
 
     int width;
     int height;
@@ -27,12 +23,10 @@ public final class World implements Consts {
     int population;
     int organic;
     int perlinValue = PERLIN_DEFAULT;
-    private long lastTimePainted = 0;
 
     private List<Cluster> allClusters;
-    private Map<Integer,List<Cluster>> clusterByX; // todo not used yet, but useful
     private List<Cluster> leaders;
-    int numThreads = NUM_THREADS;
+    int numThreads = NUM_WORKERS;
 
     private List<Thread> workers = null;
     private CyclicBarrier barrier;
@@ -75,7 +69,6 @@ public final class World implements Consts {
         Cluster cluster = new Cluster(this, new Rectangle(0, 0, width, height), false);
         allClusters.add(cluster);
 
-        this.clusterByX = makeClusterByX(allClusters);
         this.allClusters = allClusters;
         this.leaders = new ArrayList<>();
     }
@@ -105,115 +98,14 @@ public final class World implements Consts {
             }
         }
 
-        for (Cluster cluster : allClusters) {
-            System.err.println("* " + cluster);
-        }
+        //for (Cluster cluster : allClusters) {
+        //    System.err.println("* " + cluster);
+        //}
         System.err.println("threads: " + numThreads);
         System.err.println("width: " + width);
 
-        this.clusterByX = makeClusterByX(allClusters);
         this.allClusters = allClusters;
         this.leaders = leaders;
-    }
-
-    private Map<Integer,List<Cluster>> makeClusterByX(List<Cluster> allClusters) {
-        Map<Integer,List<Cluster>> clusterByX = new HashMap<>();
-        for (int i = 0; i <= width; i++) {
-            for (Cluster aCluster : allClusters) {
-                final int x = i * CLUSTER_GRAN;
-                if (aCluster.rect.contains(x, 0)) {
-                    List<Cluster> cc = clusterByX.computeIfAbsent(i, k -> new ArrayList<>(1));
-                    cc.add(aCluster);
-                }
-            }
-        }
-        return clusterByX;
-    }
-
-    private class Worker extends Thread {
-        private final GuiManager gui;
-        private final Cluster cluster;
-        Worker(GuiManager gui, Cluster cluster) {
-            this.gui = gui;
-            this.cluster = cluster;
-            setName("cluster-" + cluster.id + (cluster.leader ? "-leader" : ""));
-        }
-        public void run() {
-            while (started) {       // обновляем матрицу
-                if (numThreads == 1) {
-                    iterateLinked(gui);
-                } else {
-                    iterateCluster(cluster, gui);
-                }
-            }
-        }
-    }
-
-    private void iterateCluster(Cluster cluster, GuiManager gui) {
-        final long now = System.currentTimeMillis();
-        //System.err.println("iterate " + cluster + " / " + Thread.currentThread().getId());
-        final int maxX = cluster.rect.x + cluster.rect.width;
-        for (int x = cluster.rect.x; x < maxX; x++) {
-            final int maxY = cluster.rect.y + cluster.rect.height;
-            for (int y = cluster.rect.y; y < maxY; y++) {
-                final Bot bot = matrix[x][y];
-                if (bot != null && bot.alive == Bot.STATE_ALIVE) {
-                    bot.step();
-                }
-            }
-        }
-        if (!cluster.leader) {
-            Utils.await(barrier);
-        }
-        if (cluster.leader) {
-            generation++;
-            if (generation % gui.drawstep == 0 && (now - lastTimePainted) > 15) {
-                gui.paintWorld();
-                lastTimePainted = now;
-            }
-        }
-    }
-
-    private void iterateLinked(GuiManager gui) {
-        //System.err.println("iterateLinked");
-        final long now = System.currentTimeMillis();
-        while (currentbot != zerobot) {
-            if (currentbot.alive == Bot.STATE_ALIVE) currentbot.step();
-            currentbot = currentbot.next;
-        }
-        currentbot = currentbot.next;
-        generation++;
-        if (generation % gui.drawstep == 0 && (now - lastTimePainted) > 15) {
-            gui.paintWorld();
-            lastTimePainted = now;
-        }
-    }
-
-    void start(GuiManager gui) {
-        waitForClusters();
-        started	= true;
-        if (numThreads > 1) {
-            barrier = new CyclicBarrier(numThreads, () -> {
-                for (Cluster aLeader : leaders) {
-                    iterateCluster(aLeader, gui);
-                }
-            });
-        }
-        List<Thread> workers = new ArrayList<>();
-        for (Cluster cluster : allClusters) {
-            if (!cluster.leader || numThreads == 1) {
-                Worker thread = new Worker(gui, cluster);
-                workers.add(thread);
-                thread.start();
-            }
-        }
-        this.workers = workers;
-    }
-
-    void stop() {
-        started = false;        //Выставляем влаг
-        Utils.joinSafe(workers);
-        workers = null;
     }
 
     private void waitForClusters() {
@@ -227,25 +119,15 @@ public final class World implements Consts {
         return allClusters.stream().allMatch(cluster -> cluster.ready);
     }
 
-    // делаем паузу
-    // не используется
-    /*public void sleep() {
-        try {
-            int delay = 20;
-            Thread.sleep(delay);
-        } catch (InterruptedException e) {
-        }
-    }*/
-
     // генерируем карту
     public void generateMap(long seed) {
-        int[][] map = new int[width][height];
+        final int[][] map = new int[width][height];
         final int[] mapInGPU = new int[width * height];
 
         final float f = (float) perlinValue;
         final Perlin2D perlin = new Perlin2D(seed);
         final long start = System.currentTimeMillis();
-        final int numThreads = Math.max(NUM_THREADS - 1, 1);
+        final int numThreads = Math.max(NUM_PROCESSORS - 1, 1);
         final int sliceWidth = width / numThreads;
         final List<Thread> threads = new ArrayList<>(0);
         for (int i = 0, xStart = 0; i < numThreads; i++) {
@@ -293,6 +175,93 @@ public final class World implements Consts {
 
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу
         currentbot = bot;                       // устанавливаем текущим
+    }
+
+    void start(GuiManager gui) {
+        waitForClusters();
+        started	= true;
+        if (numThreads > 1) {
+            barrier = new CyclicBarrier(numThreads, () -> {
+                for (Cluster aLeader : leaders) {
+                    iterateCluster(aLeader);
+                }
+            });
+        }
+        List<Thread> workers = new ArrayList<>();
+        for (Cluster cluster : allClusters) {
+            if (!cluster.leader || numThreads == 1) {
+                Worker thread = new Worker(cluster);
+                workers.add(thread);
+                thread.start();
+            }
+        }
+        this.workers = workers;
+    }
+
+    void stop() {
+        started = false;        //Выставляем влаг
+        Utils.joinSafe(workers);
+        workers = null;
+        barrier = null;
+    }
+
+    private class Worker extends Thread {
+        private final Cluster cluster;
+        Worker(Cluster cluster) {
+            this.cluster = cluster;
+            setName("cluster-" + cluster.id + (cluster.leader ? "-leader" : ""));
+        }
+        public void run() {
+            while (started) {       // обновляем матрицу
+                if (numThreads == 1) {
+                    iterateLinked();
+                } else {
+                    iterateCluster(cluster);
+                }
+            }
+        }
+    }
+
+    private void iterateCluster(Cluster cluster) {
+        //System.err.println("iterate " + cluster + " / " + Thread.currentThread().getId());
+        final int maxX = cluster.rect.x + cluster.rect.width;
+        for (int x = cluster.rect.x; x < maxX; x++) {
+            final int maxY = cluster.rect.y + cluster.rect.height;
+            for (int y = cluster.rect.y; y < maxY; y++) {
+                final Bot bot = matrix[x][y];
+                if (bot != null && bot.alive == Bot.STATE_ALIVE) {
+                    bot.step();
+                }
+            }
+        }
+        if (!cluster.leader) {
+            Utils.await(barrier);
+        }
+        if (cluster.leader) {
+            generation++;
+            //final long now = System.currentTimeMillis();
+            //final long diffMs = now - lastTimePainted;
+            //if (diffMs > 15) {
+            //    System.err.println("ms: " + diffMs);
+            //    gui.paintWorld();
+            //    lastTimePainted = now;
+            //}
+        }
+    }
+
+    private void iterateLinked() {
+        //System.err.println("iterateLinked");
+        final long now = System.currentTimeMillis();
+        while (currentbot != zerobot) {
+            if (currentbot.alive == Bot.STATE_ALIVE) currentbot.step();
+            currentbot = currentbot.next;
+        }
+        currentbot = currentbot.next;
+        generation++;
+        //if (generation % gui.drawstep == 0 && (now - lastTimePainted) > 15) {
+        //    gui.paintWorld();
+        //    lastTimePainted = now;
+        //}
     }
 
     Cluster findCluster(Cluster known, int x, int y) {

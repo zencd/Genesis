@@ -14,7 +14,9 @@ public interface Consts {
     int SEA_LEVEL_DEFAULT = 145;
 
     //int NUM_THREADS = 1;
-    int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+    int NUM_WORKERS = Runtime.getRuntime().availableProcessors() * 2;
+
+    int NUM_PROCESSORS = Runtime.getRuntime().availableProcessors();
 
     //boolean PREDICTABLE_RANDOM = true;
     boolean PREDICTABLE_RANDOM = false;

@@ -1,16 +1,21 @@
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
+import java.text.DecimalFormat;
 
 /**
  * Отвечает за все аспекты визуализации через GUI.
  */
 public final class GuiManager implements Consts {
+    public static final DecimalFormat INT_FORMAT = new DecimalFormat("#,###");
+
     public final GuiFrame frame;
     private final World world;
     int viewMode = VIEW_MODE_BASE;
     int drawstep = 10;
     private Image mapBuffer = null;
+    private Thread paintThread;
+    private boolean paintThreadActive = false;
 
     public interface Callback {
         void drawStepChanged(int value);
@@ -19,6 +24,19 @@ public final class GuiManager implements Consts {
         boolean startedOrStopped();
         void viewModeChanged(int viewMode);
         void perlinChanged(int value);
+    }
+
+    class Painter extends Thread {
+        public void run() {
+            try {
+                while (paintThreadActive) {
+                    paintBots();
+                    Thread.sleep(15);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public GuiManager(World world, Callback callback) {
@@ -31,7 +49,23 @@ public final class GuiManager implements Consts {
         frame.init();
     }
 
-    public void paintMap() {
+    void startPaintThread() {
+        paintThread = new Painter();
+        paintThreadActive = true;
+        paintThread.start();
+    }
+
+    void stopPaintThread() {
+        Utils.joinSafe(paintThread);
+        paintThread = null;
+    }
+
+    public void paintEverything() {
+        paintMap();
+        paintBots();
+    }
+
+    private void paintMap() {
         final World w = this.world;
         final int sealevel = w.seaLevel;
 
@@ -66,7 +100,7 @@ public final class GuiManager implements Consts {
         this.mapBuffer = mapBuffer;
     }
 
-    public void paintWorld() {
+    private void paintBots() {
         final World w = this.world;
         final int width = w.width;
         final int height = w.height;
@@ -89,9 +123,9 @@ public final class GuiManager implements Consts {
 
         g.drawImage(image, 0, 0, null);
 
-        frame.generationLabel.setText("Generation: " + w.generation);
-        frame.populationLabel.setText("Population: " + w.population);
-        frame.organicLabel.setText("Organic: " + w.organic);
+        frame.generationLabel.setText("Generation: " + INT_FORMAT.format(w.generation));
+        frame.populationLabel.setText("Population: " + INT_FORMAT.format(w.population));
+        frame.organicLabel.setText("Organic: " + INT_FORMAT.format(w.organic));
 
         frame.buffer = buf;
         frame.canvas.repaint();

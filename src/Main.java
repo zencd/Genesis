@@ -1,4 +1,5 @@
 import java.util.Random;
+import java.util.function.Supplier;
 
 /**
  * Main class.
@@ -8,11 +9,10 @@ public final class Main implements GuiManager.Callback, Consts {
 
     private final GuiManager gui;
     private final World world;
-    private Thread paintThread;
-    private boolean paintThreadActive = false;
 
     public Main() {
-        world = new World(()->new Random(PREDICTABLE_RANDOM ? 111L : new Random().nextLong()).nextLong());
+        final Supplier<Long> mapSeeder = () -> new Random(PREDICTABLE_RANDOM ? 111L : new Random().nextLong()).nextLong();
+        world = new World(mapSeeder);
         gui = new GuiManager(world, this);
         gui.init();
     }
@@ -26,8 +26,7 @@ public final class Main implements GuiManager.Callback, Consts {
     public void mapGenerationInitiated(int canvasWidth, int canvasHeight) {
         final World w = world;
         w.mapGenerationInitiated(canvasWidth, canvasHeight);
-        gui.paintMap();
-        gui.paintWorld();
+        gui.paintEverything();
     }
 
     @Override
@@ -35,8 +34,7 @@ public final class Main implements GuiManager.Callback, Consts {
         final World w = world;
         w.seaLevel = value;
         if (w.map != null) {
-            gui.paintMap();
-            gui.paintWorld();
+            gui.paintEverything();
         }
     }
 
@@ -45,40 +43,13 @@ public final class Main implements GuiManager.Callback, Consts {
         final World w = world;
         if (w.isStarted()) {
             w.stop();
-            stopPaintThread();
+            gui.stopPaintThread();
             return false;
         } else {
             w.start(gui);
-            startPaintThread();
+            gui.startPaintThread();
             return true;
         }
-    }
-
-    class Painter extends Thread {
-        public void run() {
-            try {
-                while (world.currentbot == null) {
-                    Thread.sleep(5);
-                }
-                while (paintThreadActive) {
-                    gui.paintWorld();
-                    Thread.sleep(15);
-                }
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    void startPaintThread() {
-        paintThread = new Painter();
-        paintThreadActive = true;
-        //paintThread.start();
-    }
-
-    void stopPaintThread() {
-        paintThread = null;
-        Utils.joinSafe(paintThread);
     }
 
     @Override
@@ -93,9 +64,6 @@ public final class Main implements GuiManager.Callback, Consts {
 
     public static void main(String[] args) {
         new Main();
-        //simulation.generateMap();
-        //simulation.generateAdam();
-        //simulation.run();
     }
 
 }
