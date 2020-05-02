@@ -4,7 +4,7 @@ import java.util.Random;
  * Main class.
  * Координирует движок симуляции и GUI.
  */
-public class Main implements GuiManager.Callback, Consts {
+public final class Main implements GuiManager.Callback, Consts {
 
     private final GuiManager gui;
     private final World world;
@@ -12,8 +12,7 @@ public class Main implements GuiManager.Callback, Consts {
     private boolean paintThreadActive = false;
 
     public Main() {
-        double[] randArray = Utils.makePreCalcRandom(new Random(1000L));
-        world = new World(randArray, ()->new Random(111L).nextLong());
+        world = new World(()->new Random(PREDICTABLE_RANDOM ? 111L : new Random().nextLong()).nextLong());
         gui = new GuiManager(world, this);
         gui.init();
     }
@@ -34,7 +33,7 @@ public class Main implements GuiManager.Callback, Consts {
     @Override
     public void seaLevelChanged(int value) {
         final World w = world;
-        w.sealevel = value;
+        w.seaLevel = value;
         if (w.map != null) {
             gui.paintMap();
             gui.paintWorld();

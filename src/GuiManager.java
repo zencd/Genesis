@@ -32,7 +32,7 @@ public final class GuiManager implements Consts {
 
     public void paintMap() {
         final World w = this.world;
-        final int sealevel = w.sealevel;
+        final int sealevel = w.seaLevel;
 
         final Image mapBuffer = frame.canvas.createImage(w.width * w.zoom, w.height * w.zoom); // ширина - высота картинки
         final Graphics g = mapBuffer.getGraphics();
@@ -80,7 +80,7 @@ public final class GuiManager implements Consts {
         w.population = 0; // todo incorrect responsibility
         w.organic = 0; // todo incorrect responsibility
 
-        if (TRAVERSE_MODE == 0) {
+        if (w.numThreads == 1) {
             drawLinked(w, rgb);
         } else {
             drawArray(w, rgb);
@@ -106,7 +106,7 @@ public final class GuiManager implements Consts {
                     continue;
                 }
                 int red, green, blue;
-                if (bot.alive == 3) {                      // живой бот
+                if (bot.alive == Bot.STATE_ALIVE) {                      // живой бот
                     final int viewMode = this.viewMode;
                     if (viewMode == VIEW_MODE_BASE) {
                         rgb[bot.y * width + bot.x] = (255 << 24) | (bot.c_red << 16) | (bot.c_green << 8) | bot.c_blue;
@@ -131,17 +131,17 @@ public final class GuiManager implements Consts {
                         rgb[bot.y * width + bot.x] = bot.c_family;
                     }
                     w.population++;
-                } else if (bot.alive == 1) {                                            // органика, известняк, коралловые рифы
-                    if (w.map[bot.x][bot.y] < w.sealevel) {                     // подводная часть
+                } else if (bot.alive == Bot.STATE_ORGANIC) {                                            // органика, известняк, коралловые рифы
+                    if (w.map[bot.x][bot.y] < w.seaLevel) {                     // подводная часть
                         red = 20;
-                        blue = 160 - (w.sealevel - w.map[bot.x][bot.y]) * 2;
-                        green = 170 - (w.sealevel - w.map[bot.x][bot.y]) * 4;
+                        blue = 160 - (w.seaLevel - w.map[bot.x][bot.y]) * 2;
+                        green = 170 - (w.seaLevel - w.map[bot.x][bot.y]) * 4;
                         if (blue < 40) blue = 40;
                         if (green < 20) green = 20;
                     } else {                                    // скелетики, трупики на суше
-                        red = (int) (80 + (w.map[bot.x][bot.y] - w.sealevel) * 2.5);   // надводная часть
-                        green = (int) (60 + (w.map[bot.x][bot.y] - w.sealevel) * 2.6);
-                        blue = 30 + (w.map[bot.x][bot.y] - w.sealevel) * 3;
+                        red = (int) (80 + (w.map[bot.x][bot.y] - w.seaLevel) * 2.5);   // надводная часть
+                        green = (int) (60 + (w.map[bot.x][bot.y] - w.seaLevel) * 2.6);
+                        blue = 30 + (w.map[bot.x][bot.y] - w.seaLevel) * 3;
                         if (red > 255) red = 255;
                         if (blue > 255) blue = 255;
                         if (green > 255) green = 255;
@@ -157,7 +157,7 @@ public final class GuiManager implements Consts {
         final int width = w.width;
         while (w.currentbot != w.zerobot) {
             int red, green, blue;
-            if (w.currentbot.alive == 3) {                      // живой бот
+            if (w.currentbot.alive == Bot.STATE_ALIVE) {                      // живой бот
                 final int viewMode = this.viewMode;
                 if (viewMode == VIEW_MODE_BASE) {
                     rgb[w.currentbot.y * width + w.currentbot.x] = (255 << 24) | (w.currentbot.c_red << 16) | (w.currentbot.c_green << 8) | w.currentbot.c_blue;
@@ -182,17 +182,17 @@ public final class GuiManager implements Consts {
                     rgb[w.currentbot.y * width + w.currentbot.x] = w.currentbot.c_family;
                 }
                 w.population++;
-            } else if (w.currentbot.alive == 1) {                                            // органика, известняк, коралловые рифы
-                if (w.map[w.currentbot.x][w.currentbot.y] < w.sealevel) {                     // подводная часть
+            } else if (w.currentbot.alive == Bot.STATE_ORGANIC) {                                            // органика, известняк, коралловые рифы
+                if (w.map[w.currentbot.x][w.currentbot.y] < w.seaLevel) {                     // подводная часть
                     red = 20;
-                    blue = 160 - (w.sealevel - w.map[w.currentbot.x][w.currentbot.y]) * 2;
-                    green = 170 - (w.sealevel - w.map[w.currentbot.x][w.currentbot.y]) * 4;
+                    blue = 160 - (w.seaLevel - w.map[w.currentbot.x][w.currentbot.y]) * 2;
+                    green = 170 - (w.seaLevel - w.map[w.currentbot.x][w.currentbot.y]) * 4;
                     if (blue < 40) blue = 40;
                     if (green < 20) green = 20;
                 } else {                                    // скелетики, трупики на суше
-                    red = (int) (80 + (w.map[w.currentbot.x][w.currentbot.y] - w.sealevel) * 2.5);   // надводная часть
-                    green = (int) (60 + (w.map[w.currentbot.x][w.currentbot.y] - w.sealevel) * 2.6);
-                    blue = 30 + (w.map[w.currentbot.x][w.currentbot.y] - w.sealevel) * 3;
+                    red = (int) (80 + (w.map[w.currentbot.x][w.currentbot.y] - w.seaLevel) * 2.5);   // надводная часть
+                    green = (int) (60 + (w.map[w.currentbot.x][w.currentbot.y] - w.seaLevel) * 2.6);
+                    blue = 30 + (w.map[w.currentbot.x][w.currentbot.y] - w.seaLevel) * 3;
                     if (red > 255) red = 255;
                     if (blue > 255) blue = 255;
                     if (green > 255) green = 255;

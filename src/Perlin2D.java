@@ -1,6 +1,6 @@
 import java.util.Random;
 
-public class Perlin2D {
+public final class Perlin2D {
 
     private byte[] permutationTable;
 

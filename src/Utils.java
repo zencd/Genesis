@@ -2,7 +2,7 @@ import java.util.Random;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 
-public class Utils {
+public final class Utils {
     public static void await(CyclicBarrier barrier) {
         try {
             barrier.await();

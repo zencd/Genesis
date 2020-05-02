@@ -1,24 +1,18 @@
 public final class Bot {
 
-    private static final int LV_ORGANIC_HOLD = 1;           // органика
-    private static final int LV_ALIVE = 3;                  // живой бот
+    public static final int STATE_ORGANIC = 1;           // органика
+    public static final int STATE_ALIVE = 3;                  // живой бот
+
+    public static final int CMD_PHOTOSYNTHESIS = 32;
+
     private static final int MIND_SIZE = 64;                // объем памяти генома
 
-    private static double[] randMemory = new double[1000000];   // массив предгенерированных случайных чисел
-    private static int randIdx = 0;                             // указатель текущего случайного числа
-    static {                                                    // предгенерация массива случайных чисел
-        for (int i = 0; i < randMemory.length; i++) {
-            randMemory[i] = Math.random();
-        }
-    }
+    private byte[] mind = new byte[MIND_SIZE];               // геном бота
 
-
-    byte[] mind = new byte[MIND_SIZE];               // геном бота
-
-    int adr;                 // указатель текущей команды
+    private int adr;                 // указатель текущей команды
     int x;                   // координаты
     int y;
-    int direction;           // нправление
+    private int direction;           // нправление
     int alive;               // бот живой - 3
     int health;              // энергия
     int mineral;             // минералы
@@ -32,12 +26,30 @@ public final class Bot {
     Bot prev;                // предыдущий в цепочке просчета
     Bot next;                // следующий в цепочке просчета
 
-    final World world;
-    final Cluster cluster;
+    private final World world;
+    private final Cluster cluster;
 
     Bot(World world, Cluster cluster) {
         this.world = world;
         this.cluster = cluster;
+    }
+
+    /**
+     * Инициализирует нового бота - все начальные настройки кроме привязки к координатам, миру, кластерам, etc.
+     */
+    public void initNewBotStats() {
+        this.adr = 0;            // начальный адрес генома
+        this.health = 990;       // энергия
+        this.mineral = 0;        // минералы
+        this.alive = Bot.STATE_ALIVE;          // бот живой
+        this.age = 0;            // возраст
+        this.c_red = 170;        // задаем цвет бота
+        this.c_blue = 170;
+        this.c_green = 170;
+        this.direction = 5;      // направление
+        for (int i = 0; i < 64; i++) {
+            this.mind[i] = CMD_PHOTOSYNTHESIS;
+        }
     }
 
 
@@ -86,7 +98,7 @@ public final class Bot {
 
 //*******************************************************************
 //...............  фотосинтез .......................................
-                case 32:
+                case CMD_PHOTOSYNTHESIS:
                     botEatSun();
                     botIncAdr(1);
                     breakflag = 1;
@@ -190,7 +202,7 @@ public final class Bot {
 //.......  количество накопленой энергии, возможно                  ........
 //.......  пришло время подохнуть или породить потомка              ........
 
-        if (alive == LV_ALIVE) {
+        if (alive == STATE_ALIVE) {
 
             //... проверим уровень энергии у бота, возможно пришла пора помереть или родить
             if (health > 999) {                     // если энергии больше 999, то плодим нового бота
@@ -212,7 +224,7 @@ public final class Bot {
 //            }
 
             int level = w.map[x][y];
-            int sealevel = w.sealevel;
+            int sealevel = w.seaLevel;
             if ((level > sealevel - 30) && (level <= sealevel)) {
                 if (level <= sealevel - 20) {
                     mineral++;
@@ -333,7 +345,7 @@ public final class Bot {
     //жжжжжжжжжжжжжжжжжжжхжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж
     //=====  превращение бота в органику    ===========
     private void bot2Organic() {
-        alive = LV_ORGANIC_HOLD;       // отметим в массиве bots[], что бот органика
+        alive = STATE_ORGANIC;       // отметим в массиве bots[], что бот органика
     }
 
 
@@ -397,7 +409,7 @@ public final class Bot {
 
         int hlt = 0;
         int level = w.map[x][y];
-        int sealevel = w.sealevel;
+        int sealevel = w.seaLevel;
         if ((level > sealevel) && (level <= sealevel + 60)) {
             hlt = t + (int) ((sealevel + 60 - level) * 0.2); // формула вычисления энергии
         }
@@ -437,7 +449,7 @@ public final class Bot {
             return 2;                       // и функция возвращает 2
         }
         // осталось 2 варианта: ограника или бот
-        if (w.matrix[xt][yt].alive == LV_ORGANIC_HOLD) { // если на клетке находится органика
+        if (w.matrix[xt][yt].alive == STATE_ORGANIC) { // если на клетке находится органика
             return 4;                       // то возвращаем 4
         }
         if (isRelative(w.matrix[xt][yt])) {  // если на клетке родня
@@ -466,7 +478,7 @@ public final class Bot {
             return 2;
         }
         // осталось 2 варианта: ограника или бот
-        else if (w.matrix[xt][yt].alive == LV_ORGANIC_HOLD) {   // если там оказалась органика
+        else if (w.matrix[xt][yt].alive == STATE_ORGANIC) {   // если там оказалась органика
             deleteBot(w.matrix[xt][yt]);                        // то удаляем её из списков
             health = health + 100;          //здоровье увеличилось на 100
             goRed(100);               // бот покраснел
@@ -519,7 +531,7 @@ public final class Bot {
             return 3;
         } else if (w.matrix[xt][yt] == null) {       // если клетка пустая возвращаем 2
             return 2;
-        } else if (w.matrix[xt][yt].alive == LV_ORGANIC_HOLD) { // если органика возвращаем 4
+        } else if (w.matrix[xt][yt].alive == STATE_ORGANIC) { // если органика возвращаем 4
             return 4;
         } else if (isRelative(w.matrix[xt][yt])) {   // если родня, то возвращаем 6
             return 6;
@@ -555,7 +567,7 @@ public final class Bot {
         int xt = xFromVektorR(0);
         int yt = yFromVektorR(0);
         if ((yt >= 0) && (yt < w.height) && (w.matrix[xt][yt] != null)) {
-            if (w.matrix[xt][yt].alive == LV_ALIVE) { // если там живой бот
+            if (w.matrix[xt][yt].alive == STATE_ALIVE) { // если там живой бот
                 health = health - 10;               // то атакуюий бот теряет на атаку 10 энергии
                 if (health > 0) {                   // если он при этом не умер
                     int ma = (int) (rand() * 64);   // 0..63 // то у жертвы случайным образом меняется один ген
@@ -584,7 +596,7 @@ public final class Bot {
             return 3;
         } else if (w.matrix[xt][yt] == null) {  // если клетка пустая возвращаем 2
             return 2;
-        } else if (w.matrix[xt][yt].alive == LV_ORGANIC_HOLD) { // если органика возвращаем 4
+        } else if (w.matrix[xt][yt].alive == STATE_ORGANIC) { // если органика возвращаем 4
             return 4;
         }
         //------- если мы здесь, то в данном направлении живой ----------
@@ -622,7 +634,7 @@ public final class Bot {
             return 3;
         } else if (w.matrix[xt][yt] == null) {  // если клетка пустая возвращаем 2
             return 2;
-        } else if (w.matrix[xt][yt].alive == LV_ORGANIC_HOLD) { // если органика возвращаем 4
+        } else if (w.matrix[xt][yt].alive == STATE_ORGANIC) { // если органика возвращаем 4
             return 4;
         }
         //------- если мы здесь, то в данном направлении живой ----------
@@ -675,7 +687,7 @@ public final class Bot {
         newbot.mineral = mineral / 2;   // забирается половина минералов у предка
         mineral = mineral / 2;
 
-        newbot.alive = LV_ALIVE;        // отмечаем, что бот живой
+        newbot.alive = STATE_ALIVE;        // отмечаем, что бот живой
 
         newbot.c_red = c_red;           // цвет такой же, как у предка
         newbot.c_green = c_green;       // цвет такой же, как у предка
@@ -810,8 +822,8 @@ public final class Bot {
         }
 
         int hlt = 0;
-        if ((w.map[x][y] > w.sealevel) && (w.map[x][y] <= w.sealevel + 60)) {
-            hlt = (w.sealevel + 60 - w.map[x][y]) / 5 + t; // формула вычисления энергии
+        if ((w.map[x][y] > w.seaLevel) && (w.map[x][y] <= w.seaLevel + 60)) {
+            hlt = (w.seaLevel + 60 - w.map[x][y]) / 5 + t; // формула вычисления энергии
         }
         if (hlt >= 3) {
             return 1;
@@ -827,7 +839,7 @@ public final class Bot {
     //========   out- 1 - да, 2 - нет           =====
     private int isMineralGrow() {
         final World w = world;
-        if ((w.map[x][y] > w.sealevel - 30) && (w.map[x][y] <= w.sealevel)) return 1;
+        if ((w.map[x][y] > w.seaLevel - 30) && (w.map[x][y] <= w.seaLevel)) return 1;
         return 2;
     }
 
@@ -928,6 +940,6 @@ public final class Bot {
 
 
     private double rand() {
-        return world.rand();
+        return cluster.rand();
     }
 }

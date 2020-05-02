@@ -16,7 +16,7 @@ public final class World implements Consts {
     int width;
     int height;
     int zoom = 1;
-    int sealevel = SEA_LEVEL_DEFAULT;
+    int seaLevel = SEA_LEVEL_DEFAULT;
     int[][] map;    //Карта мира
     int[] mapInGPU;    //Карта для GPU
     Bot[][] matrix;    //Матрица мира
@@ -29,20 +29,17 @@ public final class World implements Consts {
     private long lastTimePainted = 0;
 
     private List<Cluster> allClusters;
-    private Map<Integer,List<Cluster>> clusterByX;
+    private Map<Integer,List<Cluster>> clusterByX; // todo not used yet, but useful
     private List<Cluster> leaders;
-    private int numThreads = NUM_THREADS;
+    int numThreads = NUM_THREADS;
 
     private List<Thread> workers = null;
     private CyclicBarrier barrier;
     private boolean started = false; // Флаг работы потока, если false  поток заканчивает работу
 
     private final Supplier<Long> mapSeeder; // возвращает seed только для построения карты
-    private final double[] randMemory; // массив предгенерированных случайных чисел
-    private int randIdx = 0;
 
-    public World(double[] randMemory, Supplier<Long> mapSeeder) {
-        this.randMemory = randMemory;
+    public World(Supplier<Long> mapSeeder) {
         this.mapSeeder = mapSeeder;
     }
 
@@ -59,12 +56,26 @@ public final class World implements Consts {
     public void mapGenerationInitiated(int canvasWidth, int canvasHeight) {
         width = canvasWidth / zoom;    // Ширина доступной части экрана для рисования карты
         height = canvasHeight / zoom;
-        initClusters();
+        if (numThreads == 1) {
+            initClustersST();
+        } else {
+            initClustersMT();
+        }
         generateMap(mapSeeder.get());
         generateAdam();
     }
 
-    private void initClusters() {
+    private void initClustersST() {
+        final List<Cluster> allClusters = new ArrayList<>();
+        Cluster cluster = new Cluster(this, new Rectangle(0, 0, width, height), false);
+        allClusters.add(cluster);
+
+        this.clusterByX = makeClusterByX(allClusters);
+        this.allClusters = allClusters;
+        this.leaders = new ArrayList<>();
+    }
+
+    private void initClustersMT() {
         final List<Cluster> allClusters = new ArrayList<>();
         final List<Cluster> leaders = new ArrayList<>();
         final int gap = 5;
@@ -124,8 +135,8 @@ public final class World implements Consts {
         }
         public void run() {
             while (started) {       // обновляем матрицу
-                if (TRAVERSE_MODE == 0) {
-                    iterateLinked();
+                if (numThreads == 1) {
+                    iterateLinked(gui);
                 } else {
                     iterateCluster(cluster, gui);
                 }
@@ -141,7 +152,7 @@ public final class World implements Consts {
             final int maxY = cluster.rect.y + cluster.rect.height;
             for (int y = cluster.rect.y; y < maxY; y++) {
                 final Bot bot = matrix[x][y];
-                if (bot != null && bot.alive == 3) {
+                if (bot != null && bot.alive == Bot.STATE_ALIVE) {
                     bot.step();
                 }
             }
@@ -158,24 +169,33 @@ public final class World implements Consts {
         }
     }
 
-    private void iterateLinked() {
+    private void iterateLinked(GuiManager gui) {
+        //System.err.println("iterateLinked");
+        final long now = System.currentTimeMillis();
         while (currentbot != zerobot) {
-            if (currentbot.alive == 3) currentbot.step();
+            if (currentbot.alive == Bot.STATE_ALIVE) currentbot.step();
             currentbot = currentbot.next;
         }
         currentbot = currentbot.next;
+        generation++;
+        if (generation % gui.drawstep == 0 && (now - lastTimePainted) > 15) {
+            gui.paintWorld();
+            lastTimePainted = now;
+        }
     }
 
     void start(GuiManager gui) {
         started	= true;
-        barrier = new CyclicBarrier(NUM_THREADS, () -> {
-            for (Cluster aLeader : leaders) {
-                iterateCluster(aLeader, gui);
-            }
-        });
+        if (numThreads > 1) {
+            barrier = new CyclicBarrier(numThreads, () -> {
+                for (Cluster aLeader : leaders) {
+                    iterateCluster(aLeader, gui);
+                }
+            });
+        }
         List<Thread> workers = new ArrayList<>();
         for (Cluster cluster : allClusters) {
-            if (!cluster.leader) {
+            if (!cluster.leader || numThreads == 1) {
                 Worker thread = new Worker(gui, cluster);
                 workers.add(thread);
                 thread.start();
@@ -229,38 +249,17 @@ public final class World implements Consts {
         final int y = height / 2;
 
         final Bot bot = new Bot(this, findCluster(x, y));
+        bot.x = x;
+        bot.y = y;
         zerobot.prev = bot;
         zerobot.next = bot;
-
-        bot.adr = 0;            // начальный адрес генома
-        bot.x = x;      // координаты бота
-        bot.y = y;
-        bot.health = 990;       // энергия
-        bot.mineral = 0;        // минералы
-        bot.alive = 3;          // бот живой
-        bot.age = 0;            // возраст
-        bot.c_red = 170;        // задаем цвет бота
-        bot.c_blue = 170;
-        bot.c_green = 170;
-        bot.direction = 5;      // направление
         bot.prev = zerobot;     // ссылка на предыдущего
         bot.next = zerobot;     // ссылка на следующего
-        for (int i = 0; i < 64; i++) {          // заполняем геном командой 32 - фотосинтез
-            bot.mind[i] = 32;
-        }
+
+        bot.initNewBotStats();
 
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу
         currentbot = bot;                       // устанавливаем текущим
-    }
-
-    public double rand() {
-        // todo maybe not MT ready
-        int i = this.randIdx + 1;
-        if (i >= randMemory.length) {
-            i = 0;
-        }
-        this.randIdx = i;
-        return randMemory[i];
     }
 
     Cluster findCluster(int x, int y) {

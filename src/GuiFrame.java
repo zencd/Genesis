@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Главное окно визуализации.
  */
-public class GuiFrame extends JFrame implements Consts {
+public final class GuiFrame extends JFrame implements Consts {
 
     Image buffer = null;
 

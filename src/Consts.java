@@ -9,7 +9,9 @@ public interface Consts {
     int PERLIN_DEFAULT = 300;
     int SEA_LEVEL_DEFAULT = 145;
 
-    //int TRAVERSE_MODE = 0;
-    int TRAVERSE_MODE = 1;
-    int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+    int NUM_THREADS = 1;
+    //int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+
+    //boolean PREDICTABLE_RANDOM = true;
+    boolean PREDICTABLE_RANDOM = false;
 }
