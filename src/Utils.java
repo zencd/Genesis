@@ -1,3 +1,4 @@
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
@@ -19,6 +20,12 @@ public final class Utils {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    public static void joinSafe(List<Thread> threads) {
+        for (Thread thread : threads) {
+            joinSafe(thread);
         }
     }
 

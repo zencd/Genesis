@@ -208,9 +208,7 @@ public final class World implements Consts {
 
     void stop() {
         started = false;        //Выставляем влаг
-        for (Thread worker : workers) {
-            Utils.joinSafe(worker);
-        }
+        Utils.joinSafe(workers);
         workers = null;
     }
 
@@ -244,14 +242,34 @@ public final class World implements Consts {
 
         final float f = (float) perlinValue;
         final Perlin2D perlin = new Perlin2D(seed);
-        for (int x = 0; x < width; x++) {
-            for (int y = 0; y < height; y++) {
-                final float value = perlin.getNoise(x/f,y/f,8,0.45f);        // вычисляем точку ландшафта
-                final int intValue = (int) (value * 255 + 128) & 255;
-                map[x][y] = intValue;
-                mapInGPU[y * width + x] = map[x][y];
+        final long start = System.currentTimeMillis();
+        final int numThreads = Math.max(NUM_THREADS - 1, 1);
+        final int sliceWidth = width / numThreads;
+        final List<Thread> threads = new ArrayList<>(0);
+        for (int i = 0, xStart = 0; i < numThreads; i++) {
+            final int xStartFinal = xStart;
+            final int xEnd;
+            {
+                final int xEndTmp = (i == numThreads - 1) ? width : (xStart + sliceWidth);
+                xEnd = Math.min(xEndTmp, width);
             }
+            final Runnable runnable = () -> {
+                for (int x = xStartFinal; x < xEnd; x++) {
+                    for (int y = 0; y < height; y++) {
+                        final float value = perlin.getNoise(x / f, y / f, 8, 0.45f);        // вычисляем точку ландшафта
+                        final int intValue = (int) (value * 255 + 128) & 255;
+                        map[x][y] = intValue;
+                        mapInGPU[y * width + x] = map[x][y];
+                    }
+                }
+            };
+            final Thread thread = new Thread(runnable);
+            thread.start();
+            threads.add(thread);
+            xStart = xEnd;
         }
+        Utils.joinSafe(threads);
+        System.err.println("map generated for " + (System.currentTimeMillis() - start) + " ms");
         this.mapInGPU = mapInGPU;
         this.map = map;
     }

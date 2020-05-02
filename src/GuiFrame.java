@@ -130,9 +130,9 @@ public final class GuiFrame extends JFrame implements Consts {
 //        drawstepSlider.setMinorTickSpacing(64);
         drawstepSlider.setPaintTicks(true);
         drawstepSlider.setPaintLabels(true);
-        drawstepSlider.setPreferredSize(new Dimension(100, sealevelSlider.getPreferredSize().height));
+        drawstepSlider.setPreferredSize(new Dimension(100, drawstepSlider.getPreferredSize().height));
         drawstepSlider.setAlignmentX(JComponent.LEFT_ALIGNMENT);
-        toolbar.add(drawstepSlider);
+        //toolbar.add(drawstepSlider);
 
         ButtonGroup group = new ButtonGroup();
         List<AbstractButton> radioButtons = Arrays.asList(baseButton, combinedButton, energyButton, mineralButton, ageButton, familyButton);

@@ -2,12 +2,10 @@ import java.util.Random;
 
 public final class Perlin2D {
 
-    private byte[] permutationTable;
+    private final byte[] permutationTable = new byte[1024];
 
     public Perlin2D(long seed) {
-        Random random = new Random(seed);
-        permutationTable = new byte[1024];
-        random.nextBytes(permutationTable);
+        new Random(seed).nextBytes(permutationTable);
     }
 
     public float getNoise(float fx, float fy, int octaves, float persistence) {
