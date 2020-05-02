@@ -77,8 +77,8 @@ public final class GuiManager implements Consts {
         final BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
         final int[] rgb = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
 
-        w.population = 0; // todo incorrect responsibility
-        w.organic = 0; // todo incorrect responsibility
+        w.population = 0;
+        w.organic = 0;
 
         if (w.numThreads == 1) {
             drawLinked(w, rgb);

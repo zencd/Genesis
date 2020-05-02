@@ -62,6 +62,10 @@ public final class World implements Consts {
         } else {
             initClustersMT();
         }
+        this.generation = 0;
+        this.population = 0;
+        this.organic = 0;
+        this.matrix = new Bot[width][height];
         generateMap(mapSeeder.get());
         generateAdam();
     }
@@ -235,9 +239,7 @@ public final class World implements Consts {
 
     // генерируем карту
     public void generateMap(long seed) {
-        generation = 0; // todo responsibility
         int[][] map = new int[width][height];
-        this.matrix = new Bot[width][height]; // todo responsibility
         final int[] mapInGPU = new int[width * height];
 
         final float f = (float) perlinValue;
