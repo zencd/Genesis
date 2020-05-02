@@ -1,5 +1,8 @@
 public final class Bot {
 
+    private static long idCounter = 0;
+    public static final long id = idCounter++;
+
     public static final int STATE_ORGANIC = 1;           // органика
     public static final int STATE_ALIVE = 3;                  // живой бот
 
@@ -26,8 +29,11 @@ public final class Bot {
     Bot prev;                // предыдущий в цепочке просчета
     Bot next;                // следующий в цепочке просчета
 
+    Bot nextBot;
+    Bot prevBot;
+
     private final World world;
-    private final Cluster cluster;
+    public Cluster cluster;
 
     Bot(World world, Cluster cluster) {
         this.world = world;
@@ -375,18 +381,28 @@ public final class Bot {
         final World w = world;
         w.matrix[xt][yt] = this;
         w.matrix[x][y] = null;
-        x = xt;
-        y = yt;
+        // movement - move
+        this.x = xt;
+        this.y = yt;
+        Cluster newCluster = w.findCluster(this.cluster, xt, yt);
+        if (newCluster != this.cluster) {
+            this.cluster.remove(this);
+            newCluster.add(this);
+        }
     }
 
     //жжжжжжжжжжжжжжжжжжжхжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжжж
     //=====   удаление бота        =============
-    private void deleteBot(Bot bot) {
-        final World w = world;
-        w.matrix[bot.x][bot.y] = null;   // удаление бота с карты
+    private static void deleteBot(World world, Bot bot) {
+        world.matrix[bot.x][bot.y] = null;   // удаление бота с карты
 
         bot.prev.next = bot.next;            // удаление бота из цепочки
         bot.next.prev = bot.prev;            // связывающей всех ботов
+
+        if (!bot.cluster.bots.contains(bot)) {
+            int stop = 0;
+        }
+        bot.cluster.remove(bot);
     }
 
 
@@ -474,25 +490,26 @@ public final class Bot {
         if ((yt < 0) || (yt >= w.height)) {  // если там стена возвращаем 3
             return 3;
         }
-        if (w.matrix[xt][yt] == null) {  // если клетка пустая возвращаем 2
+        final Bot other = w.matrix[xt][yt];
+        if (other == null) {  // если клетка пустая возвращаем 2
             return 2;
         }
         // осталось 2 варианта: ограника или бот
-        else if (w.matrix[xt][yt].alive == STATE_ORGANIC) {   // если там оказалась органика
-            deleteBot(w.matrix[xt][yt]);                        // то удаляем её из списков
+        else if (other.alive == STATE_ORGANIC) {   // если там оказалась органика
+            deleteBot(w, other);                        // то удаляем её из списков
             health = health + 100;          //здоровье увеличилось на 100
             goRed(100);               // бот покраснел
             return 4;                       // возвращаем 4
         }
         //--------- дошли до сюда, значит впереди живой бот -------------------
         int min0 = mineral;                 // определим количество минералов у бота
-        int min1 = w.matrix[xt][yt].mineral;  // определим количество минералов у потенциального обеда
-        int hl = w.matrix[xt][yt].health;  // определим энергию у потенциального обеда
+        int min1 = other.mineral;  // определим количество минералов у потенциального обеда
+        int hl = other.health;  // определим энергию у потенциального обеда
         // если у бота минералов больше
         if (min0 >= min1) {
             mineral = min0 - min1;          // количество минералов у бота уменьшается на количество минералов у жертвы
             // типа, стесал свои зубы о панцирь жертвы
-            deleteBot(w.matrix[xt][yt]);          // удаляем жертву из списков
+            deleteBot(w, other);          // удаляем жертву из списков
             int cl = 100 + (hl / 2);        // количество энергии у бота прибавляется на 100+(половина от энергии жертвы)
             health = health + cl;
             goRed(cl);                      // бот краснеет
@@ -501,11 +518,11 @@ public final class Bot {
         //если у жертвы минералов больше ----------------------
         mineral = 0;                        // то бот израсходовал все свои минералы на преодоление защиты
         min1 = min1 - min0;                 // у жертвы количество минералов тоже уменьшилось
-        w.matrix[xt][yt].mineral = min1;       // перезаписали минералы жертве =========================ЗАПЛАТКА!!!!!!!!!!!!
+        other.mineral = min1;       // перезаписали минералы жертве =========================ЗАПЛАТКА!!!!!!!!!!!!
         //------ если здоровья в 2 раза больше, чем минералов у жертвы  ------
         //------ то здоровьем проламываем минералы ---------------------------
         if (health >= 2 * min1) {
-            deleteBot(w.matrix[xt][yt]);         // удаляем жертву из списков
+            deleteBot(w, other);         // удаляем жертву из списков
             int cl = 100 + (hl / 2) - 2 * min1; // вычисляем, сколько энергии смог получить бот
             health = health + cl;
             if (cl < 0)
@@ -514,7 +531,7 @@ public final class Bot {
             return 5;                       // возвращаем 5
         }
         //--- если здоровья меньше, чем (минералов у жертвы)*2, то бот погибает от жертвы
-        w.matrix[xt][yt].mineral = min1 - (health / 2);  // у жертвы минералы истраченны
+        other.mineral = min1 - (health / 2);  // у жертвы минералы истраченны
         health = 0;                         // здоровье уходит в ноль
         return 5;                           // возвращаем 5
     }
@@ -673,11 +690,13 @@ public final class Bot {
         final int xt = xFromVektorR(n);       // координаты X и Y
         final int yt = yFromVektorR(n);
 
-        final Cluster newCluster = w.findCluster(cluster, xt, yt);
+        final Cluster newCluster = w.findCluster(this.cluster, xt, yt);
         final Bot newbot = new Bot(w, newCluster);
+        newCluster.add(newbot);
 
         System.arraycopy(mind, 0, newbot.mind, 0, MIND_SIZE);
 
+        // movement - double
         newbot.adr = 0;                 // указатель текущей команды в новорожденном устанавливается в 0
         newbot.x = xt;
         newbot.y = yt;
@@ -941,5 +960,15 @@ public final class Bot {
 
     private double rand() {
         return cluster.rand();
+    }
+
+    @Override
+    public String toString() {
+        return "Bot{" +
+                "id=" + id +
+                ", x=" + x +
+                ", y=" + y +
+                ", cluster=" + cluster +
+                '}';
     }
 }

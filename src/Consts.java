@@ -14,7 +14,8 @@ public interface Consts {
     int SEA_LEVEL_DEFAULT = 145;
 
     //int NUM_WORKERS = 1;
-    int NUM_WORKERS = Runtime.getRuntime().availableProcessors();
+    int NUM_WORKERS = 2;
+    //int NUM_WORKERS = Runtime.getRuntime().availableProcessors();
     //int NUM_WORKERS = Runtime.getRuntime().availableProcessors() * 2;
     //int NUM_WORKERS = 24;
 

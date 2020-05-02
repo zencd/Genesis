@@ -130,7 +130,9 @@ public final class World implements Consts {
         final int x = startPoint.x;
         final int y = startPoint.y;
 
-        final Bot bot = new Bot(this, findCluster(null, x, y));
+        final Cluster cluster = findCluster(null, x, y);
+        final Bot bot = new Bot(this, cluster);
+        // movement - adam
         bot.x = x;
         bot.y = y;
         zerobot.prev = bot;
@@ -140,8 +142,12 @@ public final class World implements Consts {
 
         bot.initNewBotStats();
 
+        cluster.add(bot);
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу
         currentbot = bot;                       // устанавливаем текущим
+
+        System.err.println("adam: " + bot);
+        System.err.println("adam: " + bot.hashCode());
     }
 
     void start(GuiManager gui) {

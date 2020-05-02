@@ -1,4 +1,5 @@
 import java.awt.*;
+import java.util.LinkedList;
 
 /**
  * Определяет кластер (кусок) карты с населяющими его ботами.
@@ -15,6 +16,10 @@ public final class Cluster {
 
     private double[] randMemory; // массив предгенерированных случайных чисел
     private int randIdx = 0;
+
+    private Bot first;
+
+    final LinkedList<Bot> bots = new LinkedList<>();
 
     public Cluster(World world, Rectangle rect, boolean leader, boolean superLeader) {
         if (superLeader && !leader) {
@@ -56,4 +61,71 @@ public final class Cluster {
                 ", leader=" + leader +
                 '}';
     }
+
+    public void add(Bot bot) {
+        assert !bots.contains(bot);
+        bots.add(bot);
+        bot.cluster = this;
+    }
+
+    public void remove(Bot bot) {
+        assert bot.cluster == this;
+        boolean contains = bots.contains(bot);
+        boolean ok = bots.remove(bot);
+        if (!ok) {
+            System.err.println("bot: " + bot);
+            System.err.println("bot: " + bot.hashCode());
+            int stop = 0;
+        }
+        assert ok;
+        bot.cluster = null;
+    }
+
+    //public void add(Bot bot) {
+    //    assert bot != null;
+    //    bot.cluster = this;
+    //    if (first == null) {
+    //        first = bot;
+    //        first.nextBot = first;
+    //        first.prevBot = first;
+    //    } else {
+    //        final Bot left = first.prevBot;
+    //        final Bot right = first;
+    //        if (left == null) {
+    //            int stop = 0;
+    //        }
+    //        left.nextBot = bot;
+    //        right.prevBot = bot;
+    //        bot.prevBot = left;
+    //        bot.nextBot = right;
+    //    }
+    //    assert bot.prevBot.cluster == bot.cluster;
+    //    assert bot.nextBot.cluster == bot.cluster;
+    //}
+    //
+    //public void remove(Bot bot) {
+    //    assert bot != null;
+    //    final Bot left = bot.prevBot;
+    //    final Bot right = bot.nextBot;
+    //    //assert left.cluster == bot.cluster;
+    //    //assert right.cluster == bot.cluster;
+    //    if (left == null) {
+    //        int stop = 0;
+    //    }
+    //    if (right == null) {
+    //        int stop = 0;
+    //    }
+    //    left.nextBot = right;
+    //    right.prevBot = left;
+    //    bot.nextBot = null;
+    //    bot.prevBot = null;
+    //    bot.cluster = null;
+    //    if (first == bot) {
+    //        if (first == right) {
+    //            first = null;
+    //        } else {
+    //            first = right;
+    //        }
+    //    }
+    //}
 }
