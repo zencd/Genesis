@@ -28,7 +28,7 @@ public final class GuiManager implements Consts {
 
     class Painter extends Thread {
         public Painter() {
-            setDaemon(false);
+            setDaemon(true);
         }
 
         public void run() {
@@ -54,14 +54,18 @@ public final class GuiManager implements Consts {
     }
 
     void startPaintThread() {
-        paintThread = new Painter();
-        paintThreadActive = true;
-        paintThread.start();
+        if (world.numThreads > 1) {
+            paintThread = new Painter();
+            paintThreadActive = true;
+            paintThread.start();
+        }
     }
 
     void stopPaintThread() {
-        Utils.joinSafe(paintThread);
-        paintThread = null;
+        if (world.numThreads > 1) {
+            Utils.joinSafe(paintThread);
+            paintThread = null;
+        }
     }
 
     public void paintEverything() {
@@ -117,7 +121,7 @@ public final class GuiManager implements Consts {
         g.drawLine(adam.x, adam.y - LEN, adam.x, adam.y + LEN);
     }
 
-    private void paintBots() {
+    public void paintBots() {
         final World w = this.world;
         final int width = w.width;
         final int height = w.height;

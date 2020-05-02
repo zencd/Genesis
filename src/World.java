@@ -28,11 +28,13 @@ public final class World implements Consts {
     private List<Cluster> leaders;
     int numThreads = NUM_WORKERS;
 
+    long lastTimePainted = 0;
+
     private List<Thread> workers = null;
     private CyclicBarrier barrier;
     private boolean started = false; // Флаг работы потока, если false  поток заканчивает работу
 
-    private final Supplier<Long> mapSeeder; // возвращает seed только для построения карты
+    public final Supplier<Long> mapSeeder; // возвращает seed только для построения карты
 
     public World(Supplier<Long> mapSeeder) {
         this.mapSeeder = mapSeeder;
@@ -60,13 +62,13 @@ public final class World implements Consts {
         this.population = 0;
         this.organic = 0;
         this.matrix = new Bot[width][height];
-        generateMap(mapSeeder.get());
+        MapGenerator.generateMap(this);
         generateAdam();
     }
 
     private void initClustersST() {
         final List<Cluster> allClusters = new ArrayList<>();
-        Cluster cluster = new Cluster(this, new Rectangle(0, 0, width, height), false);
+        Cluster cluster = new Cluster(this, new Rectangle(0, 0, width, height), false, false);
         allClusters.add(cluster);
 
         this.allClusters = allClusters;
@@ -79,20 +81,22 @@ public final class World implements Consts {
         final int gap = 1; // pixels
         final int baseWidth = (width - (numThreads-1)*gap) / numThreads;
 
+        boolean superLeader = true;
         for (int x = 0, thr = 0; x < width; thr++) {
             if (x > 0) {
                 final int aWidth = gap;
-                Cluster cluster = new Cluster(this, new Rectangle(x, 0, aWidth, height), true);
+                Cluster cluster = new Cluster(this, new Rectangle(x, 0, aWidth, height), true, superLeader);
                 leaders.add(cluster);
                 allClusters.add(cluster);
                 x += aWidth;
+                superLeader = false; // only one must rule
             }
             {
                 int aWidth = baseWidth;
                 if (thr == numThreads - 1) {
                     aWidth = this.width - x;
                 }
-                Cluster cluster = new Cluster(this, new Rectangle(x, 0, aWidth, height), false);
+                Cluster cluster = new Cluster(this, new Rectangle(x, 0, aWidth, height), false, false);
                 allClusters.add(cluster);
                 x += aWidth;
             }
@@ -119,77 +123,9 @@ public final class World implements Consts {
         return allClusters.stream().allMatch(cluster -> cluster.ready);
     }
 
-    // генерируем карту
-    public void generateMap(long seed) {
-        final int[][] map = new int[width][height];
-        final int[] mapInGPU = new int[width * height];
-
-        final float f = (float) perlinValue;
-        final Perlin2D perlin = new Perlin2D(seed);
-        final long start = System.currentTimeMillis();
-        final int numThreads = Math.max(NUM_PROCESSORS - 1, 1);
-        final int sliceWidth = width / numThreads;
-        final List<Thread> threads = new ArrayList<>(0);
-        for (int i = 0, xStart = 0; i < numThreads; i++) {
-            final int xStartFinal = xStart;
-            final int xEnd;
-            {
-                final int xEndTmp = (i == numThreads - 1) ? width : (xStart + sliceWidth);
-                xEnd = Math.min(xEndTmp, width);
-            }
-            final Runnable runnable = () -> {
-                for (int x = xStartFinal; x < xEnd; x++) {
-                    for (int y = 0; y < height; y++) {
-                        final float value = perlin.getNoise(x / f, y / f, 8, 0.45f);        // вычисляем точку ландшафта
-                        final int intValue = (int) (value * 255 + 128) & 255;
-                        map[x][y] = intValue;
-                        mapInGPU[y * width + x] = map[x][y];
-                    }
-                }
-            };
-            final Thread thread = new Thread(runnable);
-            thread.start();
-            threads.add(thread);
-            xStart = xEnd;
-        }
-        Utils.joinSafe(threads);
-        System.err.println("map generated for " + (System.currentTimeMillis() - start) + " ms");
-        this.mapInGPU = mapInGPU;
-        this.map = map;
-    }
-
-    private Point findStartPoint() {
-        int x = width / 2;
-        int y = height / 2;
-        int[][] vectors = {
-                {0, +1},
-                {-1, 0},
-                {0, -1},
-                {+1, 0},
-        };
-        int stepsPerVector = 2;
-        final int space = 5;
-        while (true) {
-            for (int[] vector : vectors) {
-                for (int i = 0; i < stepsPerVector; i++) {
-                    x += vector[0] * space;
-                    y += vector[1] * space;
-                    //System.err.println("x: " + x + ", y: " + y);
-                    final int level = map[x][y];
-                    if (level > seaLevel) {
-                        return new Point(x, y);
-                    }
-                }
-            }
-            stepsPerVector += 2 * space;
-            x += space;
-            y -= space;
-         }
-    }
-
     // генерируем первого бота
     public void generateAdam() {
-        final Point startPoint = findStartPoint();
+        final Point startPoint = MapGenerator.findStartPoint(this);
         final int x = startPoint.x;
         final int y = startPoint.y;
 
@@ -207,7 +143,7 @@ public final class World implements Consts {
         currentbot = bot;                       // устанавливаем текущим
     }
 
-    void start() {
+    void start(GuiManager gui) {
         waitForClusters();
         started	= true;
         if (numThreads > 1) {
@@ -220,7 +156,7 @@ public final class World implements Consts {
         List<Thread> workers = new ArrayList<>();
         for (Cluster cluster : allClusters) {
             if (!cluster.leader || numThreads == 1) {
-                Worker thread = new Worker(cluster);
+                Worker thread = new Worker(cluster, gui);
                 workers.add(thread);
                 thread.start();
             }
@@ -237,15 +173,17 @@ public final class World implements Consts {
 
     private class Worker extends Thread {
         private final Cluster cluster;
-        Worker(Cluster cluster) {
+        private final GuiManager gui;
+        Worker(Cluster cluster, GuiManager gui) {
             this.cluster = cluster;
-            setDaemon(false);
+            this.gui = gui;
+            setDaemon(true);
             setName("cluster-" + cluster.id + (cluster.leader ? "-leader" : ""));
         }
         public void run() {
             while (started) {       // обновляем матрицу
                 if (numThreads == 1) {
-                    iterateLinked();
+                    iterateLinked(gui);
                 } else {
                     iterateCluster(cluster);
                 }
@@ -268,19 +206,12 @@ public final class World implements Consts {
         if (!cluster.leader) {
             Utils.await(barrier);
         }
-        if (cluster.leader) {
+        if (cluster.superLeader) {
             generation++;
-            //final long now = System.currentTimeMillis();
-            //final long diffMs = now - lastTimePainted;
-            //if (diffMs > 15) {
-            //    System.err.println("ms: " + diffMs);
-            //    gui.paintWorld();
-            //    lastTimePainted = now;
-            //}
         }
     }
 
-    private void iterateLinked() {
+    private void iterateLinked(GuiManager gui) {
         //System.err.println("iterateLinked");
         final long now = System.currentTimeMillis();
         while (currentbot != zerobot) {
@@ -289,10 +220,10 @@ public final class World implements Consts {
         }
         currentbot = currentbot.next;
         generation++;
-        //if (generation % gui.drawstep == 0 && (now - lastTimePainted) > 15) {
-        //    gui.paintWorld();
-        //    lastTimePainted = now;
-        //}
+        if ((now - lastTimePainted) > 15) {
+            gui.paintBots();
+            lastTimePainted = now;
+        }
     }
 
     Cluster findCluster(Cluster known, int x, int y) {

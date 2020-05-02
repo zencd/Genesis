@@ -46,7 +46,7 @@ public final class Main implements GuiManager.Callback, Consts {
             gui.stopPaintThread();
             return false;
         } else {
-            w.start();
+            w.start(gui);
             gui.paintMap(); // добавлено чтобы стереть крестик бота Адама
             gui.startPaintThread();
             return true;

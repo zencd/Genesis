@@ -10,15 +10,20 @@ public final class Cluster {
     public final World world;
     public final Rectangle rect;
     public final boolean leader; // true для кластера сшивающего/синхронизирующего мир + он сейчас отвечает за отрисовку
+    public final boolean superLeader;
     public volatile boolean ready = false; // true если готов к использованию
 
     private double[] randMemory; // массив предгенерированных случайных чисел
     private int randIdx = 0;
 
-    public Cluster(World world, Rectangle rect, boolean leader) {
+    public Cluster(World world, Rectangle rect, boolean leader, boolean superLeader) {
+        if (superLeader && !leader) {
+            throw new IllegalStateException("superLeader assigned incorrectly");
+        }
         this.world = world;
         this.rect = rect;
         this.leader = leader;
+        this.superLeader = superLeader;
         initRandAsync();
     }
 
