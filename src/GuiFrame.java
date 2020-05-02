@@ -1,4 +1,5 @@
 import javax.swing.*;
+import javax.swing.border.CompoundBorder;
 import java.awt.*;
 import java.awt.event.ActionListener;
 import java.util.Arrays;
@@ -20,9 +21,10 @@ public final class GuiFrame extends JFrame implements Consts {
     };
 
     JPanel paintPanel = new JPanel(new FlowLayout());
-    JLabel generationLabel = new JLabel(" Generation: 0 ");
-    JLabel populationLabel = new JLabel(" Population: 0 ");
-    JLabel organicLabel = new JLabel(" Organic: 0 ");
+    JLabel generationLabel = new JLabel("Generation: 0");
+    JLabel populationLabel = new JLabel("Population: 0");
+    JLabel organicLabel = new JLabel("Organic: 0");
+    JLabel threadsLabel = new JLabel("Threads: 0");
 
     public static final Map<String,Integer> VIEW_MODE_MAP = new HashMap<>();
     static {
@@ -55,14 +57,7 @@ public final class GuiFrame extends JFrame implements Consts {
     }
 
     public void init() {
-        setTitle("Genesis 1.2.0");
-        //setSize(new Dimension(1800, 900));
-        setSize(new Dimension(600, 500));
-        Dimension sSize = Toolkit.getDefaultToolkit().getScreenSize(), fSize = getSize();
-        if (fSize.height > sSize.height) fSize.height = sSize.height;
-        if (fSize.width  > sSize.width) fSize.width = sSize.width;
-        //setLocation((sSize.width - fSize.width)/2, (sSize.height - fSize.height)/2);
-        //setSize(new Dimension(sSize.width, sSize.height));
+        setTitle("Genesis 1.3.0");
 
         setDefaultCloseOperation (WindowConstants.EXIT_ON_CLOSE);
         Container container = getContentPane();
@@ -73,18 +68,29 @@ public final class GuiFrame extends JFrame implements Consts {
 
         JPanel statusPanel = new JPanel(new FlowLayout());
         statusPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-        statusPanel.setBorder(BorderFactory.createLoweredBevelBorder());
+        //statusPanel.setBorder(BorderFactory.createLoweredBevelBorder());
         container.add(statusPanel, BorderLayout.SOUTH);
 
+        final CompoundBorder labelBorder = BorderFactory.createCompoundBorder(
+                BorderFactory.createLoweredBevelBorder(),
+                BorderFactory.createEmptyBorder(0, 4, 0, 4)
+        );
+
         generationLabel.setPreferredSize(new Dimension(140, 18));
-        generationLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        generationLabel.setBorder(labelBorder);
         statusPanel.add(generationLabel);
+
         populationLabel.setPreferredSize(new Dimension(140, 18));
-        populationLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        populationLabel.setBorder(labelBorder);
         statusPanel.add(populationLabel);
+
         organicLabel.setPreferredSize(new Dimension(140, 18));
-        organicLabel.setBorder(BorderFactory.createLoweredBevelBorder());
+        organicLabel.setBorder(labelBorder);
         statusPanel.add(organicLabel);
+
+        threadsLabel.setPreferredSize(new Dimension(140, 18));
+        threadsLabel.setBorder(labelBorder);
+        statusPanel.add(threadsLabel);
 
         JToolBar toolbar = new JToolBar();
         toolbar.setOrientation(SwingConstants.VERTICAL);
@@ -141,10 +147,22 @@ public final class GuiFrame extends JFrame implements Consts {
             toolbar.add(radioButton);
         }
 
+        //setSize(new Dimension(1800, 900));
+        //setSize(new Dimension(600, 500));
+        Dimension sSize = Toolkit.getDefaultToolkit().getScreenSize();
+        Dimension fSize = getSize();
+        if (fSize.height > sSize.height) fSize.height = sSize.height;
+        if (fSize.width  > sSize.width) fSize.width = sSize.width;
+        //setLocation((sSize.width - fSize.width)/2, (sSize.height - fSize.height)/2);
+        //setSize(new Dimension(sSize.width, sSize.height));
         //this.pack();
+        setExtendedState(MAXIMIZED_BOTH);
         this.setVisible(true);
-        //setExtendedState(MAXIMIZED_BOTH);
 
+        initListeners(radioButtons);
+    }
+
+    private void initListeners(List<AbstractButton> radioButtons) {
         drawstepSlider.addChangeListener(e -> {
             int ds = drawstepSlider.getValue();
             if (ds == 0) ds = 1;

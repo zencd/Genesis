@@ -24,6 +24,7 @@ public final class GuiManager implements Consts {
     public GuiManager(World world, Callback callback) {
         this.world = world;
         this.frame = new GuiFrame(callback);
+        this.frame.threadsLabel.setText("Threads: " + world.numThreads);
     }
 
     public void init() {
@@ -88,9 +89,9 @@ public final class GuiManager implements Consts {
 
         g.drawImage(image, 0, 0, null);
 
-        frame.generationLabel.setText(" Generation: " + w.generation);
-        frame.populationLabel.setText(" Population: " + w.population);
-        frame.organicLabel.setText(" Organic: " + w.organic);
+        frame.generationLabel.setText("Generation: " + w.generation);
+        frame.populationLabel.setText("Population: " + w.population);
+        frame.organicLabel.setText("Organic: " + w.organic);
 
         frame.buffer = buf;
         frame.canvas.repaint();

@@ -281,7 +281,7 @@ public final class World implements Consts {
         final int x = width / 2;
         final int y = height / 2;
 
-        final Bot bot = new Bot(this, findCluster(x, y));
+        final Bot bot = new Bot(this, findCluster(null, x, y));
         bot.x = x;
         bot.y = y;
         zerobot.prev = bot;
@@ -295,7 +295,10 @@ public final class World implements Consts {
         currentbot = bot;                       // устанавливаем текущим
     }
 
-    Cluster findCluster(int x, int y) {
+    Cluster findCluster(Cluster known, int x, int y) {
+        if (known != null && known.rect.contains(x, y)) {
+            return known;
+        }
         for (Cluster cluster : allClusters) {
             if (cluster.rect.contains(x, y)) {
                 return cluster;

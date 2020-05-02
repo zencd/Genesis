@@ -673,7 +673,7 @@ public final class Bot {
         final int xt = xFromVektorR(n);       // координаты X и Y
         final int yt = yFromVektorR(n);
 
-        final Cluster newCluster = w.findCluster(xt, yt);
+        final Cluster newCluster = w.findCluster(cluster, xt, yt);
         final Bot newbot = new Bot(w, newCluster);
 
         System.arraycopy(mind, 0, newbot.mind, 0, MIND_SIZE);
