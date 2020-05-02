@@ -12,6 +12,8 @@ import java.util.Map;
  */
 public final class GuiFrame extends JFrame implements Consts {
 
+    private static final Dimension LABEL_SIZE = new Dimension(140, 18);
+
     Image buffer = null;
 
     JPanel canvas = new JPanel() {
@@ -57,7 +59,7 @@ public final class GuiFrame extends JFrame implements Consts {
     }
 
     public void init() {
-        setTitle("Genesis 1.3.0");
+        setTitle(FRAME_TITLE);
 
         setDefaultCloseOperation (WindowConstants.EXIT_ON_CLOSE);
         Container container = getContentPane();
@@ -76,19 +78,19 @@ public final class GuiFrame extends JFrame implements Consts {
                 BorderFactory.createEmptyBorder(0, 4, 0, 4)
         );
 
-        generationLabel.setPreferredSize(new Dimension(140, 18));
+        generationLabel.setPreferredSize(LABEL_SIZE);
         generationLabel.setBorder(labelBorder);
         statusPanel.add(generationLabel);
 
-        populationLabel.setPreferredSize(new Dimension(140, 18));
+        populationLabel.setPreferredSize(LABEL_SIZE);
         populationLabel.setBorder(labelBorder);
         statusPanel.add(populationLabel);
 
-        organicLabel.setPreferredSize(new Dimension(140, 18));
+        organicLabel.setPreferredSize(LABEL_SIZE);
         organicLabel.setBorder(labelBorder);
         statusPanel.add(organicLabel);
 
-        threadsLabel.setPreferredSize(new Dimension(140, 18));
+        threadsLabel.setPreferredSize(LABEL_SIZE);
         threadsLabel.setBorder(labelBorder);
         statusPanel.add(threadsLabel);
 

@@ -83,7 +83,7 @@ public final class World implements Consts {
     private void initClustersMT() {
         final List<Cluster> allClusters = new ArrayList<>();
         final List<Cluster> leaders = new ArrayList<>();
-        final int gap = 5;
+        final int gap = 1; // pixels
         final int baseWidth = (width - (numThreads-1)*gap) / numThreads;
 
         for (int x = 0, thr = 0; x < width; thr++) {

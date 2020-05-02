@@ -13,6 +13,12 @@ public final class Utils {
         }
     }
 
+    public static void startAndJoinThread(Runnable runnable) {
+        final Thread thread = new Thread(runnable);
+        thread.start();
+        Utils.joinSafe(thread);
+    }
+
     public static void joinSafe(Thread thread) {
         if (thread != null) {
             try {

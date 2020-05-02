@@ -1,4 +1,8 @@
 public interface Consts {
+
+    String VERSION = "1.3.0";
+    String FRAME_TITLE = "Genesis " + VERSION;
+
     int VIEW_MODE_BASE = 0;
     int VIEW_MODE_COMBINED = 1;
     int VIEW_MODE_ENERGY = 2;
