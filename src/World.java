@@ -158,10 +158,40 @@ public final class World implements Consts {
         this.map = map;
     }
 
+    private Point findStartPoint() {
+        int x = width / 2;
+        int y = height / 2;
+        int[][] vectors = {
+                {0, +1},
+                {-1, 0},
+                {0, -1},
+                {+1, 0},
+        };
+        int stepsPerVector = 2;
+        final int space = 5;
+        while (true) {
+            for (int[] vector : vectors) {
+                for (int i = 0; i < stepsPerVector; i++) {
+                    x += vector[0] * space;
+                    y += vector[1] * space;
+                    //System.err.println("x: " + x + ", y: " + y);
+                    final int level = map[x][y];
+                    if (level > seaLevel) {
+                        return new Point(x, y);
+                    }
+                }
+            }
+            stepsPerVector += 2 * space;
+            x += space;
+            y -= space;
+         }
+    }
+
     // генерируем первого бота
     public void generateAdam() {
-        final int x = width / 2;
-        final int y = height / 2;
+        final Point startPoint = findStartPoint();
+        final int x = startPoint.x;
+        final int y = startPoint.y;
 
         final Bot bot = new Bot(this, findCluster(null, x, y));
         bot.x = x;
@@ -177,7 +207,7 @@ public final class World implements Consts {
         currentbot = bot;                       // устанавливаем текущим
     }
 
-    void start(GuiManager gui) {
+    void start() {
         waitForClusters();
         started	= true;
         if (numThreads > 1) {
@@ -209,6 +239,7 @@ public final class World implements Consts {
         private final Cluster cluster;
         Worker(Cluster cluster) {
             this.cluster = cluster;
+            setDaemon(false);
             setName("cluster-" + cluster.id + (cluster.leader ? "-leader" : ""));
         }
         public void run() {

@@ -27,6 +27,10 @@ public final class GuiManager implements Consts {
     }
 
     class Painter extends Thread {
+        public Painter() {
+            setDaemon(false);
+        }
+
         public void run() {
             try {
                 while (paintThreadActive) {
@@ -65,12 +69,12 @@ public final class GuiManager implements Consts {
         paintBots();
     }
 
-    private void paintMap() {
+    public void paintMap() {
         final World w = this.world;
-        final int sealevel = w.seaLevel;
+        final int seaLevel = w.seaLevel;
 
         final Image mapBuffer = frame.canvas.createImage(w.width * w.zoom, w.height * w.zoom); // ширина - высота картинки
-        final Graphics g = mapBuffer.getGraphics();
+        final Graphics2D g = (Graphics2D) mapBuffer.getGraphics();
 
         final BufferedImage image = new BufferedImage(w.width, w.height, BufferedImage.TYPE_INT_RGB);
         final int[] rgb = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
@@ -80,16 +84,16 @@ public final class GuiManager implements Consts {
             int red;
             int green;
             int blue;
-            if (elem < sealevel) {                     // подводная часть
+            if (elem < seaLevel) {                     // подводная часть
                 red = 5;
-                blue = 140 - (sealevel - elem) * 3;
-                green = 150 - (sealevel - elem) * 10;
+                blue = 140 - (seaLevel - elem) * 3;
+                green = 150 - (seaLevel - elem) * 10;
                 if (green < 10) green = 10;
                 if (blue < 20) blue = 20;
             } else {                                        // надводная часть
-                red = (int)(150 + (elem - sealevel) * 2.5);
-                green = (int)(100 + (elem - sealevel) * 2.6);
-                blue = 50 + (elem - sealevel) * 3;
+                red = (int)(150 + (elem - seaLevel) * 2.5);
+                green = (int)(100 + (elem - seaLevel) * 2.6);
+                blue = 50 + (elem - seaLevel) * 3;
                 if (red > 255) red = 255;
                 if (green > 255) green = 255;
                 if (blue > 255) blue = 255;
@@ -97,7 +101,20 @@ public final class GuiManager implements Consts {
             rgb[i] = (red << 16) | (green << 8) | blue;
         }
         g.drawImage(image, 0, 0, null);
+
+        if (!w.isStarted()) {
+            drawAdamCross(g, w.zerobot.next);
+        }
+
         this.mapBuffer = mapBuffer;
+    }
+
+    private void drawAdamCross(Graphics2D g, Bot adam) {
+        final int LEN = 5;
+        g.setStroke(new BasicStroke(3));
+        g.setColor(Color.GREEN);
+        g.drawLine(adam.x - LEN, adam.y, adam.x + LEN, adam.y);
+        g.drawLine(adam.x, adam.y - LEN, adam.x, adam.y + LEN);
     }
 
     private void paintBots() {
