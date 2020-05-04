@@ -5,7 +5,7 @@ import java.util.LinkedList;
  * Определяет кластер (кусок) карты с населяющими его ботами.
  * Введено для многопоточной обработки.
  */
-public final class Cluster {
+public final class Cluster implements Consts {
     private static long idCounter = 0;
     public final long id = idCounter++;
     public final World world;
@@ -63,22 +63,26 @@ public final class Cluster {
     }
 
     public void add(Bot bot) {
-        assert !bots.contains(bot);
-        bots.add(bot);
-        bot.cluster = this;
+        if (NUM_WORKERS > 1) {
+            assert !bots.contains(bot);
+            bots.add(bot);
+            bot.cluster = this;
+        }
     }
 
     public void remove(Bot bot) {
-        assert bot.cluster == this;
-        boolean contains = bots.contains(bot);
-        boolean ok = bots.remove(bot);
-        if (!ok) {
-            System.err.println("bot: " + bot);
-            System.err.println("bot: " + bot.hashCode());
-            int stop = 0;
+        if (NUM_WORKERS > 1) {
+            assert bot.cluster == this;
+            boolean contains = bots.contains(bot);
+            boolean ok = bots.remove(bot);
+            if (!ok) {
+                System.err.println("bot: " + bot);
+                System.err.println("bot: " + bot.hashCode());
+                int stop = 0;
+            }
+            assert ok;
+            bot.cluster = null;
         }
-        assert ok;
-        bot.cluster = null;
     }
 
     //public void add(Bot bot) {

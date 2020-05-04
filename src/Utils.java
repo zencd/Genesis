@@ -4,7 +4,7 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 
-public final class Utils {
+public final class Utils implements Consts {
     public static void await(CyclicBarrier barrier) {
         try {
             barrier.await();
@@ -43,11 +43,17 @@ public final class Utils {
         }
     }
 
+    private final static Random preCalcRandom = new Random(900200L);
+
     public static double[] makePreCalcRandom() {
-        return makePreCalcRandom(new Random());
+        if (PREDICTABLE_RANDOM) {
+            return makePreCalcRandom(preCalcRandom);
+        } else {
+            return makePreCalcRandom(new Random());
+        }
     }
 
-    public static double[] makePreCalcRandom(Random random) {
+    private static double[] makePreCalcRandom(Random random) {
         double[] buf = new double[1000000];
         for (int i = 0; i < buf.length; i++) {
             buf[i] = random.nextDouble();

@@ -10,6 +10,8 @@ import java.util.function.Supplier;
  */
 public final class World implements Consts {
 
+    public static final int SPEED_GENS = 10_000;
+
     int width;
     int height;
     int zoom = 1;
@@ -191,7 +193,7 @@ public final class World implements Consts {
         public void run() {
             while (started) {       // обновляем матрицу
                 if (numThreads == 1) {
-                    iterateLinked(gui);
+                    iterateST(gui);
                 } else {
                     iterateCluster(cluster);
                 }
@@ -216,7 +218,7 @@ public final class World implements Consts {
         }
         if (cluster.superLeader) {
             generation++;
-            if (generation == 10_000) {
+            if (generation == SPEED_GENS) {
                 final long now = System.currentTimeMillis();
                 final long speed = (long)((double) generation / ((now - timeStarted) / 1000d));
                 System.err.println("Speed: " + speed + " gen/sec");
@@ -224,7 +226,12 @@ public final class World implements Consts {
         }
     }
 
-    private void iterateLinked(GuiManager gui) {
+    private void iterateST(GuiManager gui) {
+        iterateST_linked(gui);
+        //iterateST_dummy(gui);
+    }
+
+    private void iterateST_linked(GuiManager gui) {
         //System.err.println("iterateLinked");
         while (currentbot != zerobot) {
             if (currentbot.alive == Bot.STATE_ALIVE) currentbot.step();
@@ -233,7 +240,29 @@ public final class World implements Consts {
         currentbot = currentbot.next;
         generation++;
         final long now = System.currentTimeMillis();
-        if (generation == 10_000) {
+        if (generation == SPEED_GENS) {
+            final long speed = (long)((double) generation / ((now - timeStarted) / 1000d));
+            System.err.println("Speed: " + speed + " gen/sec");
+        }
+        if ((now - lastTimePainted) > 15) {
+            gui.paintBots();
+            lastTimePainted = now;
+        }
+    }
+
+    private void iterateST_dummy(GuiManager gui) {
+        //System.err.println("iterateLinked");
+        for (int x = 0; x < width; x++) {
+            for (int y = 0; y < height; y++) {
+                final Bot bot = this.matrix[x][y];
+                if (bot != null && bot.alive == Bot.STATE_ALIVE) {
+                    bot.step();
+                }
+            }
+        }
+        generation++;
+        final long now = System.currentTimeMillis();
+        if (generation == SPEED_GENS) {
             final long speed = (long)((double) generation / ((now - timeStarted) / 1000d));
             System.err.println("Speed: " + speed + " gen/sec");
         }
