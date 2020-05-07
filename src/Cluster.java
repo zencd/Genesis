@@ -1,5 +1,7 @@
 import java.awt.*;
-import java.util.LinkedList;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Определяет кластер (кусок) карты с населяющими его ботами.
@@ -13,13 +15,14 @@ public final class Cluster implements Consts {
     public final boolean leader; // true для кластера сшивающего/синхронизирующего мир + он сейчас отвечает за отрисовку
     public final boolean superLeader;
     public volatile boolean ready = false; // true если готов к использованию
+    long botsProcessedTotal = 0;
 
     private double[] randMemory; // массив предгенерированных случайных чисел
     private int randIdx = 0;
 
     private Bot first;
 
-    final LinkedList<Bot> bots = new LinkedList<>();
+    final Set<Bot> bots = Collections.synchronizedSet(new HashSet<>());
 
     public Cluster(World world, Rectangle rect, boolean leader, boolean superLeader) {
         if (superLeader && !leader) {

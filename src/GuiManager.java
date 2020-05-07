@@ -7,8 +7,6 @@ import java.text.DecimalFormat;
  * Отвечает за все аспекты визуализации через GUI.
  */
 public final class GuiManager implements Consts {
-    public static final DecimalFormat INT_FORMAT = new DecimalFormat("#,###");
-
     public final GuiFrame frame;
     private final World world;
     int viewMode = VIEW_MODE_BASE;

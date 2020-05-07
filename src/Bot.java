@@ -384,9 +384,13 @@ public final class Bot {
         // movement - move
         this.x = xt;
         this.y = yt;
-        Cluster newCluster = w.findCluster(this.cluster, xt, yt);
-        if (newCluster != this.cluster) {
-            this.cluster.remove(this);
+        final Cluster oldCluster = this.cluster;
+        assert oldCluster != null;
+        Cluster newCluster = w.findCluster(oldCluster, xt, yt);
+        if (newCluster != oldCluster) {
+            if (oldCluster != null) {
+                oldCluster.remove(this);
+            }
             newCluster.add(this);
         }
     }

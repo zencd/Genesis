@@ -10,8 +10,6 @@ import java.util.function.Supplier;
  */
 public final class World implements Consts {
 
-    public static final int SPEED_GENS = 10_000;
-
     int width;
     int height;
     int zoom = 1;
@@ -21,9 +19,10 @@ public final class World implements Consts {
     Bot[][] matrix;    //Матрица мира
     Bot zerobot = makeZeroBot(this);
     Bot currentbot;
-    int generation;
-    int population;
-    int organic;
+    long generation;
+    long population;
+    long organic;
+    long botsProcessedTotal = 0;
     int perlinValue = PERLIN_DEFAULT;
 
     private List<Cluster> allClusters;
@@ -32,6 +31,7 @@ public final class World implements Consts {
 
     private long lastTimePainted = 0;
     private long timeStarted = 0;
+    private boolean speedReported = false;
 
     private List<Thread> workers = null;
     private CyclicBarrier barrier;
@@ -147,14 +147,12 @@ public final class World implements Consts {
         cluster.add(bot);
         matrix[bot.x][bot.y] = bot;             // помещаем бота в матрицу
         currentbot = bot;                       // устанавливаем текущим
-
-        System.err.println("adam: " + bot);
-        System.err.println("adam: " + bot.hashCode());
     }
 
     void start(GuiManager gui) {
         waitForClusters();
         timeStarted = System.currentTimeMillis();
+        speedReported = false;
         started	= true;
         if (numThreads > 1) {
             barrier = new CyclicBarrier(numThreads, () -> {
@@ -203,6 +201,7 @@ public final class World implements Consts {
 
     private void iterateCluster(Cluster cluster) {
         //System.err.println("iterate " + cluster + " / " + Thread.currentThread().getId());
+        int botsProcessed = 0;
         final int maxX = cluster.rect.x + cluster.rect.width;
         for (int x = cluster.rect.x; x < maxX; x++) {
             final int maxY = cluster.rect.y + cluster.rect.height;
@@ -210,39 +209,62 @@ public final class World implements Consts {
                 final Bot bot = matrix[x][y];
                 if (bot != null && bot.alive == Bot.STATE_ALIVE) {
                     bot.step();
+                    botsProcessed++;
                 }
             }
         }
+        cluster.botsProcessedTotal += botsProcessed;
         if (!cluster.leader) {
             Utils.await(barrier);
         }
         if (cluster.superLeader) {
             generation++;
-            if (generation == SPEED_GENS) {
+            if (!speedReported) {
                 final long now = System.currentTimeMillis();
-                final long speed = (long)((double) generation / ((now - timeStarted) / 1000d));
-                System.err.println("Speed: " + speed + " gen/sec");
+                final long timePassed = now - timeStarted;
+                if (timePassed >= SPEED_TIME) {
+                    botsProcessedTotal = 0;
+                    for (Cluster aCluster : allClusters) {
+                        botsProcessedTotal += aCluster.botsProcessedTotal;
+                    }
+                    final long speed = (long) ((double) generation / (timePassed / 1000d));
+                    final long speed2 = (long) ((double) botsProcessedTotal / (timePassed / 1000d));
+                    System.err.println("Speed: " + INT_FORMAT.format(speed) + " gen/sec");
+                    System.err.println("Speed: " + INT_FORMAT.format(speed2) + " bots/sec");
+                    speedReported = true;
+                }
             }
         }
     }
 
     private void iterateST(GuiManager gui) {
-        iterateST_linked(gui);
-        //iterateST_dummy(gui);
+        //iterateST_linked(gui);
+        iterateST_dummy(gui);
     }
 
     private void iterateST_linked(GuiManager gui) {
         //System.err.println("iterateLinked");
+        int botsProcessed = 0;
         while (currentbot != zerobot) {
-            if (currentbot.alive == Bot.STATE_ALIVE) currentbot.step();
+            if (currentbot.alive == Bot.STATE_ALIVE) {
+                currentbot.step();
+                botsProcessed++;
+            }
             currentbot = currentbot.next;
         }
         currentbot = currentbot.next;
         generation++;
+        botsProcessedTotal += botsProcessed;
         final long now = System.currentTimeMillis();
-        if (generation == SPEED_GENS) {
-            final long speed = (long)((double) generation / ((now - timeStarted) / 1000d));
-            System.err.println("Speed: " + speed + " gen/sec");
+        if (!speedReported) {
+            final long timePassed = now - timeStarted;
+            if (timePassed >= SPEED_TIME) {
+                final long speed1 = (long) ((double) generation / (timePassed / 1000d));
+                final long speed2 = (long) ((double) botsProcessedTotal / (timePassed / 1000d));
+                System.err.println("Speed: " + INT_FORMAT.format(speed1) + " gen/sec");
+                System.err.println("Speed: " + INT_FORMAT.format(speed2) + " bots/sec");
+                speedReported = true;
+            }
         }
         if ((now - lastTimePainted) > 15) {
             gui.paintBots();
@@ -252,19 +274,28 @@ public final class World implements Consts {
 
     private void iterateST_dummy(GuiManager gui) {
         //System.err.println("iterateLinked");
+        int botsProcessed = 0;
         for (int x = 0; x < width; x++) {
             for (int y = 0; y < height; y++) {
                 final Bot bot = this.matrix[x][y];
                 if (bot != null && bot.alive == Bot.STATE_ALIVE) {
                     bot.step();
+                    botsProcessed++;
                 }
             }
         }
         generation++;
+        botsProcessedTotal += botsProcessed;
         final long now = System.currentTimeMillis();
-        if (generation == SPEED_GENS) {
-            final long speed = (long)((double) generation / ((now - timeStarted) / 1000d));
-            System.err.println("Speed: " + speed + " gen/sec");
+        if (!speedReported) {
+            final long timePassed = now - timeStarted;
+            if (timePassed >= SPEED_TIME) {
+                final long speed1 = (long)((double) generation / (timePassed / 1000d));
+                final long speed2 = (long)((double) botsProcessedTotal / (timePassed / 1000d));
+                System.err.println("Speed: " + INT_FORMAT.format(speed1) + " gen/sec");
+                System.err.println("Speed: " + INT_FORMAT.format(speed2) + " bots/sec");
+                speedReported = true;
+            }
         }
         if ((now - lastTimePainted) > 15) {
             gui.paintBots();

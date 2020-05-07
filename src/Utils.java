@@ -35,6 +35,10 @@ public final class Utils implements Consts {
         }
     }
 
+    public static void sleep(long millis) {
+        sleep(TimeUnit.MILLISECONDS, millis);
+    }
+
     public static void sleep(TimeUnit timeUnit, long amount) {
         try {
             timeUnit.sleep(amount);
